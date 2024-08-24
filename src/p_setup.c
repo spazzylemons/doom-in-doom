@@ -795,11 +795,7 @@ P_SetupLevel
 
     Z_FreeTags (PU_LEVEL, PU_PURGELEVEL-1);
 
-    // UNUSED W_Profile ();
     P_InitThinkers ();
-
-    // if working with a devlopment map, reload it
-    W_Reload ();
 
     // find map name
     if ( gamemode == commercial)

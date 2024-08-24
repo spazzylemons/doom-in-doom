@@ -1,10 +1,11 @@
 CC := gcc
-CFLAGS := -I/usr/include/SDL2
-LDFLAGS := -lSDL2 -lSDL2_mixer -lfluidsynth -lsamplerate
+CFLAGS := -I/usr/include/SDL2 -g
+LDFLAGS := -lSDL2 -lSDL2_mixer -lsamplerate
 
 O := build
 
 OBJS := \
+    $(O)/i_rvsys.o \
     $(O)/am_map.o \
     $(O)/deh_ammo.o \
     $(O)/deh_bexstr.o \
@@ -38,21 +39,12 @@ OBJS := \
     $(O)/gusconf.o \
     $(O)/hu_lib.o \
     $(O)/hu_stuff.o \
-    $(O)/i_cdmus.o \
-    $(O)/i_flmusic.o \
-    $(O)/i_glob.o \
-    $(O)/i_input.o \
-    $(O)/i_joystick.o \
     $(O)/i_main.o \
-    $(O)/i_musicpack.o \
     $(O)/info.o \
-    $(O)/i_sdlmusic.o \
-    $(O)/i_sdlsound.o \
     $(O)/i_sound.o \
     $(O)/i_system.o \
     $(O)/i_timer.o \
     $(O)/i_video.o \
-    $(O)/i_videohr.o \
     $(O)/m_argv.o \
     $(O)/m_bbox.o \
     $(O)/m_cheat.o \
@@ -60,12 +52,9 @@ OBJS := \
     $(O)/m_controls.o \
     $(O)/memio.o \
     $(O)/m_fixed.o \
-    $(O)/midifallback.o \
-    $(O)/midifile.o \
     $(O)/m_menu.o \
     $(O)/m_misc.o \
     $(O)/m_random.o \
-    $(O)/mus2mid.o \
     $(O)/p_ceilng.o \
     $(O)/p_doors.o \
     $(O)/p_enemy.o \
@@ -102,12 +91,7 @@ OBJS := \
     $(O)/tables.o \
     $(O)/v_diskicon.o \
     $(O)/v_video.o \
-    $(O)/w_checksum.o \
-    $(O)/w_file.o \
-    $(O)/w_file_stdc.o \
     $(O)/wi_stuff.o \
-    $(O)/w_main.o \
-    $(O)/w_merge.o \
     $(O)/w_wad.o \
     $(O)/z_zone.o \
 

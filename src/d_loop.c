@@ -69,11 +69,6 @@ static int recvtic;
 
 int gametic;
 
-// When set to true, a single tic is run each time TryRunTics() is called.
-// This is used for -timedemo mode.
-
-boolean singletics = false;
-
 // Index of the local player.
 
 static int localplayer;
@@ -110,26 +105,6 @@ static boolean local_playeringame[NET_MAXPLAYERS];
 // and saved in the game settings.
 
 static int player_class;
-
-
-// 35 fps clock adjusted by offsetms milliseconds
-
-static int GetAdjustedTime(void)
-{
-    int time_ms;
-
-    time_ms = I_GetTimeMS();
-
-    if (new_sync)
-    {
-	// Use the adjustments from net_client.c only if we are
-	// using the new sync mode.
-
-        time_ms += (offsetms / FRACUNIT);
-    }
-
-    return (time_ms * TICRATE) / 1000;
-}
 
 static boolean BuildNewTic(void)
 {
@@ -183,51 +158,8 @@ static boolean BuildNewTic(void)
     return true;
 }
 
-//
-// NetUpdate
-// Builds ticcmds for console player,
-// sends out a packet
-//
-int      lasttime;
-
 void NetUpdate (void)
 {
-    int nowtime;
-    int newtics;
-    int	i;
-
-    // If we are running with singletics (timing a demo), this
-    // is all done separately.
-
-    if (singletics)
-        return;
-
-    // check time
-    nowtime = GetAdjustedTime() / ticdup;
-    newtics = nowtime - lasttime;
-
-    lasttime = nowtime;
-
-    if (skiptics <= newtics)
-    {
-        newtics -= skiptics;
-        skiptics = 0;
-    }
-    else
-    {
-        skiptics -= newtics;
-        newtics = 0;
-    }
-
-    // build new ticcmds for console player
-
-    for (i=0 ; i<newtics ; i++)
-    {
-        if (!BuildNewTic())
-        {
-            break;
-        }
-    }
 }
 
 static void D_Disconnected(void)
@@ -285,7 +217,6 @@ void D_ReceiveTic(ticcmd_t *ticcmds, boolean *players_mask)
 
 void D_StartGameLoop(void)
 {
-    lasttime = GetAdjustedTime() / ticdup;
 }
 
 void D_StartNetGame(net_gamesettings_t *settings)
@@ -390,55 +321,6 @@ static int frameon;
 static int frameskip[4];
 static int oldnettics;
 
-static void OldNetSync(void)
-{
-    unsigned int i;
-    int keyplayer = -1;
-
-    frameon++;
-
-    // ideally maketic should be 1 - 3 tics above lowtic
-    // if we are consistantly slower, speed up time
-
-    for (i=0 ; i<NET_MAXPLAYERS ; i++)
-    {
-        if (local_playeringame[i])
-        {
-            keyplayer = i;
-            break;
-        }
-    }
-
-    if (keyplayer < 0)
-    {
-        // If there are no players, we can never advance anyway
-
-        return;
-    }
-
-    if (localplayer == keyplayer)
-    {
-        // the key player does not adapt
-    }
-    else
-    {
-        if (maketic <= recvtic)
-        {
-            lasttime--;
-            // printf ("-");
-        }
-
-        frameskip[frameon & 3] = oldnettics > recvtic;
-        oldnettics = maketic;
-
-        if (frameskip[0] && frameskip[1] && frameskip[2] && frameskip[3])
-        {
-            skiptics = 1;
-            // printf ("+");
-        }
-    }
-}
-
 // Returns true if there are players in the game:
 
 static boolean PlayersInGame(void)
@@ -520,17 +402,9 @@ void TryRunTics (void)
     realtics = entertic - oldentertics;
     oldentertics = entertic;
 
-    // in singletics mode, run a single tic every time this function
-    // is called.
+    // Run a single tic every time this function
 
-    if (singletics)
-    {
-        BuildNewTic();
-    }
-    else
-    {
-        NetUpdate ();
-    }
+    BuildNewTic();
 
     lowtic = GetLowTic();
 
@@ -554,11 +428,6 @@ void TryRunTics (void)
 
         if (counts < 1)
             counts = 1;
-
-        if (net_client_connected)
-        {
-            OldNetSync();
-        }
     }
 
     if (counts < 1)
@@ -585,7 +454,7 @@ void TryRunTics (void)
                 return;
             }
 
-            I_Sleep(1);
+            I_EndFrame();
         }
     }
 
@@ -666,21 +535,6 @@ boolean D_NonVanillaRecord(boolean conditional, const char *feature)
     return true;
 }
 
-// Returns true if the given lump number corresponds to data from a .lmp
-// file, as opposed to a WAD.
-static boolean IsDemoFile(int lumpnum)
-{
-    char *lower;
-    boolean result;
-
-    lower = M_StringDuplicate(lumpinfo[lumpnum]->wad_file->path);
-    M_ForceLowercase(lower);
-    result = M_StringEndsWith(lower, ".lmp");
-    free(lower);
-
-    return result;
-}
-
 // If the provided conditional value is true, we're trying to play back
 // a demo that includes a non-vanilla extension. We return true if the
 // conditional is true and it's allowed to use this extension, checking
@@ -694,13 +548,6 @@ boolean D_NonVanillaPlayback(boolean conditional, int lumpnum,
 {
     if (!conditional || StrictDemos())
     {
-        return false;
-    }
-
-    if (!IsDemoFile(lumpnum))
-    {
-        printf("Warning: WAD contains demo with a non-vanilla extension "
-               "(%s)\n", feature);
         return false;
     }
 

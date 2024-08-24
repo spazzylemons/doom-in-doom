@@ -59,7 +59,6 @@ void D_StartGameLoop(void);
 
 void D_StartNetGame(net_gamesettings_t *settings);
 
-extern boolean singletics;
 extern int gametic, ticdup;
 
 // Check if it is permitted to record a demo with a non-vanilla feature.

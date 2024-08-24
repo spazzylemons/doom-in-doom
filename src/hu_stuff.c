@@ -25,7 +25,6 @@
 #include "z_zone.h"
 
 #include "deh_main.h"
-#include "i_input.h"
 #include "i_swap.h"
 #include "i_video.h"
 
@@ -566,14 +565,11 @@ static void StartChatInput(int dest)
     chat_on = true;
     HUlib_resetIText(&w_chat);
     HU_queueChatChar(HU_BROADCAST);
-
-    I_StartTextInput(0, 8, SCREENWIDTH, 16);
 }
 
 static void StopChatInput(void)
 {
     chat_on = false;
-    I_StopTextInput();
 }
 
 boolean HU_Responder(event_t *ev)

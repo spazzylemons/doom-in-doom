@@ -29,7 +29,6 @@
 #include "g_game.h"
 #include "doomdef.h"
 #include "doomstat.h"
-#include "w_checksum.h"
 #include "w_wad.h"
 
 #include "deh_main.h"

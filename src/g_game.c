@@ -35,7 +35,6 @@
 #include "m_misc.h"
 #include "m_menu.h"
 #include "m_random.h"
-#include "i_joystick.h"
 #include "i_system.h"
 #include "i_timer.h"
 #include "i_input.h"
@@ -196,7 +195,6 @@ static const struct
 #define SLOWTURNTICS	6 
  
 #define NUMKEYS		256 
-#define MAX_JOY_BUTTONS 20
 
 static boolean  gamekeydown[NUMKEYS]; 
 static int      turnheld;		// for accelerative turning 
@@ -214,13 +212,6 @@ static int      dclicks;
 static int      dclicktime2;
 static boolean  dclickstate2;
 static int      dclicks2;
-
-// joystick values are repeated 
-static int      joyxmove;
-static int      joyymove;
-static int      joystrafemove;
-static boolean  joyarray[MAX_JOY_BUTTONS + 1]; 
-static boolean *joybuttons = &joyarray[1];		// allow [-1] 
  
 static int      savegameslot; 
 static char     savedescription[32]; 
@@ -343,25 +334,20 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     cmd->consistancy = 
 	consistancy[consoleplayer][maketic%BACKUPTICS]; 
  
-    strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe] 
-	|| joybuttons[joybstrafe]; 
+    strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe]; 
 
     // fraggle: support the old "joyb_speed = 31" hack which
     // allowed an autorun effect
 
     speed = key_speed >= NUMKEYS
-         || joybspeed >= MAX_JOY_BUTTONS
          || gamekeydown[key_speed] 
-         || joybuttons[joybspeed]
          || mousebuttons[mousebspeed];
  
     forward = side = 0;
     
     // use two stage accelerative turning
     // on the keyboard and joystick
-    if (joyxmove < 0
-	|| joyxmove > 0  
-	|| gamekeydown[key_right]
+    if (gamekeydown[key_right]
 	|| gamekeydown[key_left]
 	|| mousebuttons[mousebturnright]
 	|| mousebuttons[mousebturnleft])
@@ -387,20 +373,6 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
 	    //	fprintf(stderr, "strafe left\n");
 	    side -= sidemove[speed]; 
 	}
-        if (use_analog && joyxmove)
-        {
-            joyxmove = joyxmove * joystick_move_sensitivity / 10;
-            joyxmove = (joyxmove > FRACUNIT) ? FRACUNIT : joyxmove;
-            joyxmove = (joyxmove < -FRACUNIT) ? -FRACUNIT : joyxmove;
-            side += FixedMul(sidemove[speed], joyxmove);
-        }
-        else if (joystick_move_sensitivity)
-        {
-            if (joyxmove > 0)
-                side += sidemove[speed];
-            if (joyxmove < 0)
-                side -= sidemove[speed];
-        }
     } 
     else 
     { 
@@ -408,21 +380,6 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
 	    cmd->angleturn -= angleturn[tspeed]; 
 	if (gamekeydown[key_left] || mousebuttons[mousebturnleft])
 	    cmd->angleturn += angleturn[tspeed]; 
-        if (use_analog && joyxmove)
-        {
-            // Cubic response curve allows for finer control when stick
-            // deflection is small.
-            joyxmove = FixedMul(FixedMul(joyxmove, joyxmove), joyxmove);
-            joyxmove = joyxmove * joystick_turn_sensitivity / 10;
-            cmd->angleturn -= FixedMul(angleturn[1], joyxmove);
-        }
-        else if (joystick_turn_sensitivity)
-        {
-            if (joyxmove > 0)
-                cmd->angleturn -= angleturn[tspeed];
-            if (joyxmove < 0)
-                cmd->angleturn += angleturn[tspeed];
-        }
     } 
  
     if (gamekeydown[key_up]) 
@@ -436,59 +393,25 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
 	forward -= forwardmove[speed]; 
     }
 
-    if (use_analog && joyymove)
-    {
-        joyymove = joyymove * joystick_move_sensitivity / 10;
-        joyymove = (joyymove > FRACUNIT) ? FRACUNIT : joyymove;
-        joyymove = (joyymove < -FRACUNIT) ? -FRACUNIT : joyymove;
-        forward -= FixedMul(forwardmove[speed], joyymove);
-    }
-    else if (joystick_move_sensitivity)
-    {
-        if (joyymove < 0)
-            forward += forwardmove[speed];
-        if (joyymove > 0)
-            forward -= forwardmove[speed];
-    }
-
     if (gamekeydown[key_strafeleft]
-     || joybuttons[joybstrafeleft]
      || mousebuttons[mousebstrafeleft])
     {
         side -= sidemove[speed];
     }
 
     if (gamekeydown[key_straferight]
-     || joybuttons[joybstraferight]
      || mousebuttons[mousebstraferight])
     {
         side += sidemove[speed]; 
     }
 
-    if (use_analog && joystrafemove)
-    {
-        joystrafemove = joystrafemove * joystick_move_sensitivity / 10;
-        joystrafemove = (joystrafemove > FRACUNIT) ? FRACUNIT : joystrafemove;
-        joystrafemove = (joystrafemove < -FRACUNIT) ? -FRACUNIT : joystrafemove;
-        side += FixedMul(sidemove[speed], joystrafemove);
-    }
-    else if (joystick_move_sensitivity)
-    {
-        if (joystrafemove < 0)
-            side -= sidemove[speed];
-        if (joystrafemove > 0)
-            side += sidemove[speed];
-    }
-
     // buttons
     cmd->chatchar = HU_dequeueChatChar(); 
  
-    if (gamekeydown[key_fire] || mousebuttons[mousebfire] 
-	|| joybuttons[joybfire]) 
+    if (gamekeydown[key_fire] || mousebuttons[mousebfire]) 
 	cmd->buttons |= BT_ATTACK; 
  
     if (gamekeydown[key_use]
-     || joybuttons[joybuse]
      || mousebuttons[mousebuse])
     { 
 	cmd->buttons |= BT_USE;
@@ -563,8 +486,7 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
         
         // strafe double click
         bstrafe =
-            mousebuttons[mousebstrafe] 
-            || joybuttons[joybstrafe]; 
+            mousebuttons[mousebstrafe]; 
         if (bstrafe != dclickstate2 && dclicktime2 > 1 ) 
         { 
             dclickstate2 = bstrafe; 
@@ -715,45 +637,15 @@ void G_DoLoadLevel (void)
     // clear cmd building stuff
 
     memset (gamekeydown, 0, sizeof(gamekeydown));
-    joyxmove = joyymove = joystrafemove = 0;
     mousex = mousey = 0;
     sendpause = sendsave = paused = false;
     memset(mousearray, 0, sizeof(mousearray));
-    memset(joyarray, 0, sizeof(joyarray));
 
     if (testcontrols)
     {
         players[consoleplayer].message = "Press escape to quit.";
     }
 } 
-
-static void SetJoyButtons(unsigned int buttons_mask)
-{
-    int i;
-
-    for (i=0; i<MAX_JOY_BUTTONS; ++i)
-    {
-        int button_on = (buttons_mask & (1 << i)) != 0;
-
-        // Detect button press:
-
-        if (!joybuttons[i] && button_on)
-        {
-            // Weapon cycling:
-
-            if (i == joybprevweapon)
-            {
-                next_weapon = -1;
-            }
-            else if (i == joybnextweapon)
-            {
-                next_weapon = 1;
-            }
-        }
-
-        joybuttons[i] = button_on;
-    }
-}
 
 static void SetMouseButtons(unsigned int buttons_mask)
 {
@@ -888,10 +780,6 @@ boolean G_Responder (event_t* ev)
 	return true;    // eat events 
  
       case ev_joystick: 
-        SetJoyButtons(ev->data1);
-	joyxmove = ev->data2; 
-	joyymove = ev->data3; 
-        joystrafemove = ev->data4;
 	return true;    // eat events 
  
       default: 
@@ -2318,7 +2206,6 @@ void G_TimeDemo (char* name)
     nodrawers = M_CheckParm ("-nodraw");
 
     timingdemo = true; 
-    singletics = true; 
 
     defdemoname = name; 
     gameaction = ga_playdemo; 

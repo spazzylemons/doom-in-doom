@@ -36,7 +36,6 @@
 #include "d_iwad.h"
 
 #include "z_zone.h"
-#include "w_main.h"
 #include "w_wad.h"
 #include "s_sound.h"
 #include "v_diskicon.h"
@@ -52,8 +51,6 @@
 #include "m_menu.h"
 #include "p_saveg.h"
 
-#include "i_input.h"
-#include "i_joystick.h"
 #include "i_system.h"
 #include "i_timer.h"
 #include "i_video.h"
@@ -252,13 +249,6 @@ boolean D_Display (void)
 
     }
 
-    if (testcontrols)
-    {
-        // Box showing current mouse speed
-
-        V_DrawMouseSpeedBox(testcontrols_mousespeed);
-    }
-
     menuactivestate = menuactive;
     viewactivestate = viewactive;
     inhelpscreensstate = inhelpscreens;
@@ -330,9 +320,7 @@ void D_BindVariables(void)
 
     M_ApplyPlatformDefaults();
 
-    I_BindInputVariables();
     I_BindVideoVariables();
-    I_BindJoystickVariables();
     I_BindSoundVariables();
 
     M_BindBaseControls();
@@ -405,13 +393,6 @@ void D_RunFrame()
 
     if (wipe)
     {
-        do
-        {
-            nowtime = I_GetTime ();
-            tics = nowtime - wipestart;
-            I_Sleep(1);
-        } while (tics <= 0);
-
         wipestart = nowtime;
         wipe = !wipe_ScreenWipe(wipe_Melt
                                , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics);
@@ -429,7 +410,7 @@ void D_RunFrame()
     S_UpdateSounds (players[consoleplayer].mo);// move positional sounds
 
     // Update display, next frame, with current state if no profiling is on
-    if (screenvisible && !nodrawers)
+    if (!nodrawers)
     {
         if ((wipe = D_Display ()))
         {
@@ -463,10 +444,6 @@ void D_DoomLoop (void)
 
     main_loop_started = true;
 
-    I_SetWindowTitle(gamedescription);
-    I_GraphicsCheckCommandLine();
-    I_SetGrabMouseCallback(D_GrabMouseCallback);
-    I_RegisterWindowIcon(doom_icon_data, doom_icon_w, doom_icon_h);
     I_InitGraphics();
     EnableLoadingDisk();
 
@@ -906,16 +883,6 @@ static void D_SetGameDescription(void)
 //      print title for every printed line
 char            title[128];
 
-static boolean D_AddFile(char *filename)
-{
-    wad_file_t *handle;
-
-    printf(" adding %s\n", filename);
-    handle = W_AddFile(filename);
-
-    return handle != NULL;
-}
-
 // Copyright message banners
 // Some dehacked mods replace these.  These are only displayed if they are 
 // replaced by dehacked.
@@ -1182,72 +1149,13 @@ static void LoadIwadDeh(void)
     // and installed next to the IWAD.
     if (gameversion == exe_chex)
     {
-        char *chex_deh = NULL;
-        char *dirname;
-
-        // Look for chex.deh in the same directory as the IWAD file.
-        dirname = M_DirName(iwadfile);
-        chex_deh = M_StringJoin(dirname, DIR_SEPARATOR_S, "chex.deh", NULL);
-        free(dirname);
-
-        // If the dehacked patch isn't found, try searching the WAD
-        // search path instead.  We might find it...
-        if (!M_FileExists(chex_deh))
-        {
-            free(chex_deh);
-            chex_deh = D_FindWADByName("chex.deh");
-        }
-
-        // Still not found?
-        if (chex_deh == NULL)
-        {
-            I_Error("Unable to find Chex Quest dehacked file (chex.deh).\n"
-                    "The dehacked file is required in order to emulate\n"
-                    "chex.exe correctly.  It can be found in your nearest\n"
-                    "/idgames repository mirror at:\n\n"
-                    "   themes/chex/chexdeh.zip");
-        }
-
-        if (!DEH_LoadFile(chex_deh))
-        {
-            I_Error("Failed to load chex.deh needed for emulating chex.exe.");
-        }
+        I_Error("Failed to load chex.deh needed for emulating chex.exe.");
     }
 
     if (IsFrenchIWAD())
     {
-        char *french_deh = NULL;
-        char *dirname;
-
-        // Look for french.deh in the same directory as the IWAD file.
-        dirname = M_DirName(iwadfile);
-        french_deh = M_StringJoin(dirname, DIR_SEPARATOR_S, "french.deh", NULL);
-        printf("French version\n");
-        free(dirname);
-
-        // If the dehacked patch isn't found, try searching the WAD
-        // search path instead.  We might find it...
-        if (!M_FileExists(french_deh))
-        {
-            free(french_deh);
-            french_deh = D_FindWADByName("french.deh");
-        }
-
-        // Still not found?
-        if (french_deh == NULL)
-        {
-            I_Error("Unable to find French Doom II dehacked file\n"
-                    "(french.deh).  The dehacked file is required in order to\n"
-                    "emulate French doom2.exe correctly.  It can be found in\n"
-                    "your nearest /idgames repository mirror at:\n\n"
-                    "   utils/exe_edit/patches/french.zip");
-        }
-
-        if (!DEH_LoadFile(french_deh))
-        {
-            I_Error("Failed to load french.deh needed for emulating French\n"
-                    "doom2.exe.");
-        }
+        I_Error("Failed to load french.deh needed for emulating French\n"
+                "doom2.exe.");
     }
 }
 
@@ -1414,9 +1322,7 @@ void D_DoomMain (void)
     modifiedgame = false;
 
     DEH_printf("W_Init: Init WADfiles.\n");
-    D_AddFile(iwadfile);
-
-    W_CheckCorrectIWAD(doom);
+    W_Init();
 
     // Now that we've loaded the IWAD, we can figure out what gamemission
     // we're playing and which version of Vanilla Doom we need to emulate.
@@ -1494,177 +1400,16 @@ void D_DoomMain (void)
         DEH_AddStringReplacement("M_SCRNSZ", "M_DISP");
     }
 
-    //!
-    // @category mod
-    //
-    // Disable auto-loading of .wad and .deh files.
-    //
-    if (!M_ParmExists("-noautoload") && gamemode != shareware)
-    {
-        char *autoload_dir;
-
-        // common auto-loaded files for all Doom flavors
-
-        if (gamemission < pack_chex)
-        {
-            autoload_dir = M_GetAutoloadDir("doom-all");
-            if (autoload_dir != NULL)
-            {
-                DEH_AutoLoadPatches(autoload_dir);
-                W_AutoLoadWADs(autoload_dir);
-                free(autoload_dir);
-            }
-        }
-
-        // auto-loaded files per IWAD
-        autoload_dir = M_GetAutoloadDir(D_SaveGameIWADName(gamemission, gamevariant));
-        if (autoload_dir != NULL)
-        {
-            DEH_AutoLoadPatches(autoload_dir);
-            W_AutoLoadWADs(autoload_dir);
-            free(autoload_dir);
-        }
-    }
-
-    // Load Dehacked patches specified on the command line with -deh.
-    // Note that there's a very careful and deliberate ordering to how
-    // Dehacked patches are loaded. The order we use is:
-    //  1. IWAD dehacked patches.
-    //  2. Command line dehacked patches specified with -deh.
-    //  3. PWAD dehacked patches in DEHACKED lumps.
-    DEH_ParseCommandLine();
-
-    // Load PWAD files.
-    modifiedgame = W_ParseCommandLine();
-
-    // Debug:
-//    W_PrintDirectory();
-
-    //!
-    // @arg <demo>
-    // @category demo
-    // @vanilla
-    //
-    // Play back the demo named demo.lmp.
-    //
-
-    p = M_CheckParmWithArgs ("-playdemo", 1);
-
-    if (!p)
-    {
-        //!
-        // @arg <demo>
-        // @category demo
-        // @vanilla
-        //
-        // Play back the demo named demo.lmp, determining the framerate
-        // of the screen.
-        //
-	p = M_CheckParmWithArgs("-timedemo", 1);
-
-    }
-
-    if (p)
-    {
-        char *uc_filename = strdup(myargv[p + 1]);
-        M_ForceUppercase(uc_filename);
-
-        // With Vanilla you have to specify the file without extension,
-        // but make that optional.
-        if (M_StringEndsWith(uc_filename, ".LMP"))
-        {
-            M_StringCopy(file, myargv[p + 1], sizeof(file));
-        }
-        else
-        {
-            DEH_snprintf(file, sizeof(file), "%s.lmp", myargv[p+1]);
-        }
-
-        free(uc_filename);
-
-        if (D_AddFile(file))
-        {
-            M_StringCopy(demolumpname, lumpinfo[numlumps - 1]->name,
-                         sizeof(demolumpname));
-        }
-        else
-        {
-            // If file failed to load, still continue trying to play
-            // the demo in the same way as Vanilla Doom.  This makes
-            // tricks like "-playdemo demo1" possible.
-
-            M_StringCopy(demolumpname, myargv[p + 1], sizeof(demolumpname));
-        }
-
-        printf("Playing demo %s.\n", file);
-    }
-
     I_AtExit(G_CheckDemoStatusAtExit, true);
 
     // Generate the WAD hash table.  Speed things up a bit.
     W_GenerateHashTable();
-
-    // Load DEHACKED lumps from WAD files - but only if we give the right
-    // command line parameter.
-
-    //!
-    // @category mod
-    //
-    // Load Dehacked patches from DEHACKED lumps contained in one of the
-    // loaded PWAD files.
-    //
-    if (M_ParmExists("-dehlump"))
-    {
-        int i, loaded = 0;
-        int numiwadlumps = numlumps;
-
-        while (!W_IsIWADLump(lumpinfo[numiwadlumps - 1]))
-        {
-            numiwadlumps--;
-        }
-
-        for (i = numiwadlumps; i < numlumps; ++i)
-        {
-            if (!strncmp(lumpinfo[i]->name, "DEHACKED", 8))
-            {
-                DEH_LoadLump(i, false, false);
-                loaded++;
-            }
-        }
-
-        printf("  loaded %i DEHACKED lumps from PWAD files.\n", loaded);
-    }
 
     // Set the gamedescription string. This is only possible now that
     // we've finished loading Dehacked patches.
     D_SetGameDescription();
 
     savegamedir = M_GetSaveGameDir(D_SaveGameIWADName(gamemission, gamevariant));
-
-    // Check for -file in shareware
-    if (modifiedgame && (gamevariant != freedoom))
-    {
-	// These are the lumps that will be checked in IWAD,
-	// if any one is not present, execution will be aborted.
-	char name[23][8]=
-	{
-	    "e2m1","e2m2","e2m3","e2m4","e2m5","e2m6","e2m7","e2m8","e2m9",
-	    "e3m1","e3m3","e3m3","e3m4","e3m5","e3m6","e3m7","e3m8","e3m9",
-	    "dphoof","bfgga0","heada1","cybra1","spida1d1"
-	};
-	int i;
-	
-	if ( gamemode == shareware)
-	    I_Error(DEH_String("\nYou cannot -file with the shareware "
-			       "version. Register!"));
-
-	// Check for fake IWAD with right name,
-	// but w/o all the lumps of the registered version. 
-	if (gamemode == registered)
-	    for (i = 0;i < 23; i++)
-		if (W_CheckNumForName(name[i])<0)
-		    I_Error(DEH_String("\nThis is not the registered version."));
-    }
 
     if (W_CheckNumForName("SS_START") >= 0
      || W_CheckNumForName("FF_END") >= 0)
@@ -1679,9 +1424,6 @@ void D_DoomMain (void)
     PrintDehackedBanners();
 
     DEH_printf("I_Init: Setting up machine state.\n");
-    I_CheckIsScreensaver();
-    I_InitTimer();
-    I_InitJoystick();
     I_InitSound(doom);
     I_InitMusic();
 

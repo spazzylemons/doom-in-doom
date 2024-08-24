@@ -22,9 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "SDL.h"
-
 #include "doomtype.h"
+#include "i_rvsys.h"
 #include "i_system.h"
 #include "m_argv.h"
 #include "m_misc.h"
@@ -41,6 +40,8 @@ void D_DoomMain (void);
 int main(int argc, char **argv)
 {
     // save arguments
+
+    I_RV_Init();
 
     myargc = argc;
     myargv = malloc(argc * sizeof(char *));
@@ -59,18 +60,8 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-#if defined(_WIN32)
-    // compose a proper command line from loose file paths passed as arguments
-    // to allow for loading WADs and DEHACKED patches by drag-and-drop
-    M_AddLooseFiles();
-#endif
-
     M_FindResponseFile();
     M_SetExeDir();
-
-    #ifdef SDL_HINT_NO_SIGNAL_HANDLERS
-    SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
-    #endif
 
     // start doom
 

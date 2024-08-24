@@ -30,8 +30,6 @@
 #include <unistd.h>
 #endif
 
-#include "SDL.h"
-
 #include "config.h"
 
 #include "deh_str.h"
@@ -39,7 +37,6 @@
 #include "m_argv.h"
 #include "m_config.h"
 #include "m_misc.h"
-#include "i_joystick.h"
 #include "i_sound.h"
 #include "i_timer.h"
 #include "i_video.h"
@@ -210,22 +207,6 @@ void I_PrintStartupBanner(const char *gamedescription)
     I_PrintDivider();
 }
 
-// 
-// I_ConsoleStdout
-//
-// Returns true if stdout is a real console, false if it is a file
-//
-
-boolean I_ConsoleStdout(void)
-{
-#ifdef _WIN32
-    // SDL "helpfully" always redirects stdout to a file.
-    return false;
-#else
-    return isatty(fileno(stdout));
-#endif
-}
-
 //
 // I_Init
 //
@@ -261,8 +242,6 @@ void I_Quit (void)
         entry->func();
         entry = entry->next;
     }
-
-    SDL_Quit();
 
     exit(0);
 }
@@ -319,27 +298,6 @@ void I_Error (const char *error, ...)
 
         entry = entry->next;
     }
-
-    //!
-    // @category obscure
-    //
-    // If specified, don't show a GUI window for error messages when the
-    // game exits with an error.
-    //
-    exit_gui_popup = !M_ParmExists("-nogui");
-
-    // Pop up a GUI dialog box to show the error message, if the
-    // game was not run from the console (and the user will
-    // therefore be unable to otherwise see the message).
-    if (exit_gui_popup && !I_ConsoleStdout())
-    {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-                                 PACKAGE_STRING, msgbuf, NULL);
-    }
-
-    // abort();
-
-    SDL_Quit();
 
     exit(-1);
 }

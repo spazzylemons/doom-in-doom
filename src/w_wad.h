@@ -23,7 +23,6 @@
 #include <stdio.h>
 
 #include "doomtype.h"
-#include "w_file.h"
 
 
 //
@@ -40,8 +39,6 @@ typedef int lumpindex_t;
 struct lumpinfo_s
 {
     char	name[8];
-    wad_file_t *wad_file;
-    int		position;
     int		size;
     void       *cache;
 
@@ -53,8 +50,7 @@ struct lumpinfo_s
 extern lumpinfo_t **lumpinfo;
 extern unsigned int numlumps;
 
-wad_file_t *W_AddFile(const char *filename);
-void W_Reload(void);
+void W_Init(void);
 
 lumpindex_t W_CheckNumForName(const char *name);
 lumpindex_t W_GetNumForName(const char *name);
@@ -71,8 +67,5 @@ extern unsigned int W_LumpNameHash(const char *s);
 
 void W_ReleaseLumpNum(lumpindex_t lump);
 void W_ReleaseLumpName(const char *name);
-
-const char *W_WadNameForLump(const lumpinfo_t *lump);
-boolean W_IsIWADLump(const lumpinfo_t *lump);
 
 #endif

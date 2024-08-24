@@ -29,8 +29,6 @@
 #include "d_main.h"
 #include "deh_main.h"
 
-#include "i_input.h"
-#include "i_joystick.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "i_timer.h"
@@ -631,14 +629,14 @@ void M_DoSave(int slot)
 static void SetDefaultSaveName(int slot)
 {
     // map from IWAD or PWAD?
-    if (W_IsIWADLump(maplumpinfo) && strcmp(savegamedir, ""))
+    if (strcmp(savegamedir, ""))
     {
         M_snprintf(savegamestrings[itemOn], SAVESTRINGSIZE,
                    "%s", maplumpinfo->name);
     }
     else
     {
-        char *wadname = M_StringDuplicate(W_WadNameForLump(maplumpinfo));
+        char *wadname = M_StringDuplicate("doom");
         char *ext = strrchr(wadname, '.');
 
         if (ext != NULL)
@@ -668,7 +666,6 @@ void M_SaveSelect(int choice)
     // We need to turn on text input:
     x = LoadDef.x - 11;
     y = LoadDef.y + choice * LINEHEIGHT - 4;
-    I_StartTextInput(x, y, x + 8 + 24 * 8 + 8, y + LINEHEIGHT - 2);
 
     saveSlot = choice;
     M_StringCopy(saveOldString,savegamestrings[choice], SAVESTRINGSIZE);
@@ -1399,100 +1396,7 @@ boolean M_Responder (event_t* ev)
   
     ch = 0;
     key = -1;
-	
-    if (ev->type == ev_joystick)
-    {
-        // Simulate key presses from joystick events to interact with the menu.
 
-        if (menuactive)
-        {
-            if (JOY_GET_DPAD(ev->data6) != JOY_DIR_NONE)
-            {
-                dir = JOY_GET_DPAD(ev->data6);
-            }
-            else if (JOY_GET_LSTICK(ev->data6) != JOY_DIR_NONE)
-            {
-                dir = JOY_GET_LSTICK(ev->data6);
-            }
-            else
-            {
-                dir = JOY_GET_RSTICK(ev->data6);
-            }
-
-            if (dir & JOY_DIR_UP)
-            {
-                key = key_menu_up;
-                joywait = I_GetTime() + 5;
-            }
-            else if (dir & JOY_DIR_DOWN)
-            {
-                key = key_menu_down;
-                joywait = I_GetTime() + 5;
-            }
-            if (dir & JOY_DIR_LEFT)
-            {
-                key = key_menu_left;
-                joywait = I_GetTime() + 5;
-            }
-            else if (dir & JOY_DIR_RIGHT)
-            {
-                key = key_menu_right;
-                joywait = I_GetTime() + 5;
-            }
-
-#define JOY_BUTTON_MAPPED(x) ((x) >= 0)
-#define JOY_BUTTON_PRESSED(x) (JOY_BUTTON_MAPPED(x) && (ev->data1 & (1 << (x))) != 0)
-
-            if (JOY_BUTTON_PRESSED(joybfire))
-            {
-                // Simulate a 'Y' keypress when Doom show a Y/N dialog with Fire button.
-                if (messageToPrint && messageNeedsInput)
-                {
-                    key = key_menu_confirm;
-                }
-                // Simulate pressing "Enter" when we are supplying a save slot name
-                else if (saveStringEnter)
-                {
-                    key = KEY_ENTER;
-                }
-                else
-                {
-                    // if selecting a save slot via joypad, set a flag
-                    if (currentMenu == &SaveDef)
-                    {
-                        joypadSave = true;
-                    }
-                    key = key_menu_forward;
-                }
-                joywait = I_GetTime() + 5;
-            }
-            if (JOY_BUTTON_PRESSED(joybuse))
-            {
-                // Simulate a 'N' keypress when Doom show a Y/N dialog with Use button.
-                if (messageToPrint && messageNeedsInput)
-                {
-                    key = key_menu_abort;
-                }
-                // If user was entering a save name, back out
-                else if (saveStringEnter)
-                {
-                    key = KEY_ESCAPE;
-                }
-                else
-                {
-                    key = key_menu_back;
-                }
-                joywait = I_GetTime() + 5;
-            }
-        }
-        if (JOY_BUTTON_PRESSED(joybmenu))
-        {
-            key = key_menu_activate;
-            joywait = I_GetTime() + 5;
-        }
-    }
-    else
-    {
 	if (ev->type == ev_mouse && mousewait < I_GetTime() && menuactive)
 	{
 	    mousey += ev->data3;
@@ -1543,7 +1447,6 @@ boolean M_Responder (event_t* ev)
 		ch = ev->data2;
 	    }
 	}
-    }
     
     if (key == -1)
 	return false;
@@ -1563,39 +1466,23 @@ boolean M_Responder (event_t* ev)
 
           case KEY_ESCAPE:
             saveStringEnter = 0;
-            I_StopTextInput();
             M_StringCopy(savegamestrings[saveSlot], saveOldString,
                          SAVESTRINGSIZE);
             break;
 
 	  case KEY_ENTER:
 	    saveStringEnter = 0;
-            I_StopTextInput();
 	    if (savegamestrings[saveSlot][0])
 		M_DoSave(saveSlot);
 	    break;
 
 	  default:
-            // Savegame name entry. This is complicated.
-            // Vanilla has a bug where the shift key is ignored when entering
-            // a savegame name. If vanilla_keyboard_mapping is on, we want
-            // to emulate this bug by using ev->data1. But if it's turned off,
-            // it implies the user doesn't care about Vanilla emulation:
-            // instead, use ev->data3 which gives the fully-translated and
-            // modified key input.
 
             if (ev->type != ev_keydown)
             {
                 break;
             }
-            if (vanilla_keyboard_mapping)
-            {
-                ch = ev->data1;
-            }
-            else
-            {
-                ch = ev->data3;
-            }
+            ch = ev->data3;
 
             ch = toupper(ch);
 

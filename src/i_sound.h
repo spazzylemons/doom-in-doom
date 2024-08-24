@@ -241,45 +241,4 @@ extern float libsamplerate_scale;
 
 void I_BindSoundVariables(void);
 
-// Sound modules
-
-void I_InitTimidityConfig(void);
-extern const sound_module_t sound_sdl_module;
-extern const sound_module_t sound_pcsound_module;
-extern const music_module_t music_sdl_module;
-extern const music_module_t music_opl_module;
-extern const music_module_t music_pack_module;
-extern const music_module_t music_win_module;
-extern const music_module_t music_fl_module;
-
-// For native music module:
-
-extern char *music_pack_path;
-extern char *timidity_cfg_path;
-#ifdef _WIN32
-extern char *winmm_midi_device;
-extern int winmm_complevel;
-extern int winmm_reset_type;
-extern int winmm_reset_delay;
-#endif
-
-// For FluidSynth module:
-
-#ifdef HAVE_FLUIDSYNTH
-extern char *fsynth_sf_path;
-extern int fsynth_chorus_active;
-extern float fsynth_chorus_depth;
-extern float fsynth_chorus_level;
-extern int fsynth_chorus_nr;
-extern float fsynth_chorus_speed;
-extern char *fsynth_midibankselect;
-extern int fsynth_polyphony;
-extern int fsynth_reverb_active;
-extern float fsynth_reverb_damp;
-extern float fsynth_reverb_level;
-extern float fsynth_reverb_roomsize;
-extern float fsynth_reverb_width;
-extern float fsynth_gain;
-#endif // HAVE_FLUIDSYNTH
-
 #endif

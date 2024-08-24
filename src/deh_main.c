@@ -21,7 +21,6 @@
 #include <ctype.h>
 
 #include "doomtype.h"
-#include "i_glob.h"
 #include "i_system.h"
 #include "d_iwad.h"
 #include "m_argv.h"
@@ -366,68 +365,6 @@ static void DEH_ParseContext(deh_context_t *context)
     }
 }
 
-// Parses a dehacked file
-
-int DEH_LoadFile(const char *filename)
-{
-    deh_context_t *context;
-
-    if (!deh_initialized)
-    {
-        DEH_Init();
-    }
-
-    // Before parsing a new file, reset special override flags to false.
-    // Magic comments should only apply to the file in which they were
-    // defined, and shouldn't carry over to subsequent files as well.
-    deh_allow_long_strings = false;
-    deh_allow_long_cheats = false;
-    deh_allow_extended_strings = false;
-
-    printf(" loading %s\n", filename);
-
-    context = DEH_OpenFile(filename);
-
-    if (context == NULL)
-    {
-        fprintf(stderr, "DEH_LoadFile: Unable to open %s\n", filename);
-        return 0;
-    }
-
-    DEH_ParseContext(context);
-
-    DEH_CloseFile(context);
-
-    if (DEH_HadError(context))
-    {
-        I_Error("Error parsing dehacked file");
-    }
-
-    return 1;
-}
-
-// Load all dehacked patches from the given directory.
-void DEH_AutoLoadPatches(const char *path)
-{
-    const char *filename;
-    glob_t *glob;
-
-    glob = I_StartMultiGlob(path, GLOB_FLAG_NOCASE|GLOB_FLAG_SORTED,
-                            "*.deh", "*.hhe", "*.seh", NULL);
-    for (;;)
-    {
-        filename = I_NextGlob(glob);
-        if (filename == NULL)
-        {
-            break;
-        }
-        printf(" [autoload]");
-        DEH_LoadFile(filename);
-    }
-
-    I_EndGlob(glob);
-}
-
 // Load dehacked file from WAD lump.
 // If allow_long is set, allow long strings and cheats just for this lump.
 
@@ -480,34 +417,5 @@ int DEH_LoadLumpByName(const char *name, boolean allow_long, boolean allow_error
     }
 
     return DEH_LoadLump(lumpnum, allow_long, allow_error);
-}
-
-// Check the command line for -deh argument, and others.
-void DEH_ParseCommandLine(void)
-{
-    char *filename;
-    int p;
-
-    //!
-    // @arg <files>
-    // @category mod
-    //
-    // Load the given dehacked patch(es)
-    //
-
-    p = M_CheckParm("-deh");
-
-    if (p > 0)
-    {
-        ++p;
-
-        while (p < myargc && myargv[p][0] != '-')
-        {
-            filename = D_TryFindWADByName(myargv[p]);
-            DEH_LoadFile(filename);
-            free(filename);
-            ++p;
-        }
-    }
 }
 
