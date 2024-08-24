@@ -47,8 +47,8 @@ static byte saveg_read8(void)
     {
         if (!savegame_error)
         {
-            fprintf(stderr, "saveg_read8: Unexpected end of file while "
-                            "reading save game\n");
+            printf("saveg_read8: Unexpected end of file while "
+                   "reading save game\n");
 
             savegame_error = true;
         }

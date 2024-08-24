@@ -42,17 +42,6 @@ char**		myargv;
 
 int M_CheckParmWithArgs(const char *check, int num_args)
 {
-    int i;
-
-    // Check if myargv[i] has been set to NULL in LoadResponseFile(),
-    // which may call I_Error(), which in turn calls M_ParmExists("-nogui").
-
-    for (i = 1; i < myargc - num_args && myargv[i]; i++)
-    {
-	if (!strcasecmp(check, myargv[i]))
-	    return i;
-    }
-
     return 0;
 }
 

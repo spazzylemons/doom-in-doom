@@ -46,10 +46,6 @@
 #include "w_wad.h"
 #include "z_zone.h"
 
-#define DEFAULT_RAM 16 /* MiB */
-#define MIN_RAM     4  /* MiB */
-
-
 typedef struct atexit_listentry_s atexit_listentry_t;
 
 struct atexit_listentry_s
@@ -65,7 +61,7 @@ void I_AtExit(atexit_func_t func, boolean run_on_error)
 {
     atexit_listentry_t *entry;
 
-    entry = malloc(sizeof(*entry));
+    entry = Z_Malloc(sizeof(*entry), PU_STATIC, NULL);
 
     entry->func = func;
     entry->run_on_error = run_on_error;
@@ -79,93 +75,10 @@ void I_Tactile(int on, int off, int total)
 {
 }
 
-// Zone memory auto-allocation function that allocates the zone size
-// by trying progressively smaller zone sizes until one is found that
-// works.
-
-static byte *AutoAllocMemory(int *size, int default_ram, int min_ram)
-{
-    byte *zonemem;
-
-    // Allocate the zone memory.  This loop tries progressively smaller
-    // zone sizes until a size is found that can be allocated.
-    // If we used the -mb command line parameter, only the parameter
-    // provided is accepted.
-
-    zonemem = NULL;
-
-    while (zonemem == NULL)
-    {
-        // We need a reasonable minimum amount of RAM to start.
-
-        if (default_ram < min_ram)
-        {
-            I_Error("Unable to allocate %i MiB of RAM for zone", default_ram);
-        }
-
-        // Try to allocate the zone memory.
-
-        *size = default_ram * 1024 * 1024;
-
-        zonemem = malloc(*size);
-
-        // Failed to allocate?  Reduce zone size until we reach a size
-        // that is acceptable.
-
-        if (zonemem == NULL)
-        {
-            default_ram -= 1;
-        }
-    }
-
-    return zonemem;
-}
-
 byte *I_ZoneBase (int *size)
 {
-    byte *zonemem;
-    int min_ram, default_ram;
-    int p;
-
-    //!
-    // @category obscure
-    // @arg <mb>
-    //
-    // Specify the heap size, in MiB.
-    //
-
-    p = M_CheckParmWithArgs("-mb", 1);
-
-    if (p > 0)
-    {
-        default_ram = atoi(myargv[p+1]);
-        min_ram = default_ram;
-    }
-    else
-    {
-        // Because of the 8-byte pointer size in a 64-bit build, the default
-        // heap size (16 MiB) is insufficient compared to a 32-bit build. For
-        // example, the Alien Vendetta avm62402.lmp demo completes successfully
-        // on a 32-bit build, but terminates with an out of memory error on a
-        // 64-bit build. Therefore, to maintain consistency with a 32-bit
-        // build, the heap size should be increased.
-
-        if (sizeof(void *) == 8)
-        {
-            default_ram = DEFAULT_RAM * 2;
-        }
-        else
-        {
-            default_ram = DEFAULT_RAM;
-        }
-        min_ram = MIN_RAM;
-    }
-
-    zonemem = AutoAllocMemory(size, default_ram, min_ram);
-
-    printf("zone memory: %p, %x allocated for zone\n", 
-           zonemem, *size);
-
+    static byte zonemem[6 * 1024 * 1024];
+    *size = sizeof(zonemem);
     return zonemem;
 }
 
@@ -263,7 +176,7 @@ void I_Error (const char *error, ...)
 
     if (already_quitting)
     {
-        fprintf(stderr, "Warning: recursive call to I_Error detected.\n");
+        printf("Warning: recursive call to I_Error detected.\n");
         exit(-1);
     }
     else
@@ -274,10 +187,9 @@ void I_Error (const char *error, ...)
     // Message first.
     va_start(argptr, error);
     //fprintf(stderr, "\nError: ");
-    vfprintf(stderr, error, argptr);
-    fprintf(stderr, "\n\n");
+    vprintf(error, argptr);
+    printf("\n\n");
     va_end(argptr);
-    fflush(stderr);
 
     // Write a copy of the message into buffer.
     va_start(argptr, error);

@@ -399,22 +399,6 @@ void DEH_printf(const char *fmt, ...)
     va_end(args);
 }
 
-// fprintf(), performing a replacement on the format string.
-
-void DEH_fprintf(FILE *fstream, const char *fmt, ...)
-{
-    va_list args;
-    const char *repl;
-
-    repl = FormatStringReplacement(fmt);
-
-    va_start(args, fmt);
-
-    vfprintf(fstream, repl, args);
-
-    va_end(args);
-}
-
 // snprintf(), performing a replacement on the format string.
 
 void DEH_snprintf(char *buffer, size_t len, const char *fmt, ...)

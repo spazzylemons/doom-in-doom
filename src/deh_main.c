@@ -385,7 +385,7 @@ int DEH_LoadLump(int lumpnum, boolean allow_long, boolean allow_error)
 
     if (context == NULL)
     {
-        fprintf(stderr, "DEH_LoadFile: Unable to open lump %i\n", lumpnum);
+        printf("DEH_LoadFile: Unable to open lump %i\n", lumpnum);
         return 0;
     }
 
@@ -411,7 +411,7 @@ int DEH_LoadLumpByName(const char *name, boolean allow_long, boolean allow_error
 
     if (lumpnum == -1)
     {
-        fprintf(stderr, "DEH_LoadLumpByName: '%s' lump not found\n", name);
+        printf("DEH_LoadLumpByName: '%s' lump not found\n", name);
         return 0;
     }
 

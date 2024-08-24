@@ -177,12 +177,7 @@ char *M_StringReplace(const char *haystack, const char *needle,
 
     // Construct new string.
 
-    result = malloc(result_len);
-    if (result == NULL)
-    {
-        I_Error("M_StringReplace: Failed to allocate new string");
-        return NULL;
-    }
+    result = Z_Malloc(result_len, PU_STATIC, NULL);
 
     dst = result; dst_len = result_len;
     p = haystack;
@@ -287,13 +282,7 @@ char *M_StringJoin(const char *s, ...)
     }
     va_end(args);
 
-    result = malloc(result_len);
-
-    if (result == NULL)
-    {
-        I_Error("M_StringJoin: Failed to allocate new string.");
-        return NULL;
-    }
+    result = Z_Malloc(result_len, PU_STATIC, NULL);
 
     M_StringCopy(result, s, result_len);
 

@@ -69,8 +69,8 @@ static void *DEH_TextStart(deh_context_t *context, char *line)
         return NULL;
     }
 
-    from_text = malloc(fromlen + 1);
-    to_text = malloc(tolen + 1);
+    from_text = Z_Malloc(fromlen + 1, PU_STATIC, NULL);
+    to_text = Z_Malloc(tolen + 1, PU_STATIC, NULL);
 
     // read in the "from" text
 
@@ -90,8 +90,8 @@ static void *DEH_TextStart(deh_context_t *context, char *line)
 
     DEH_AddStringReplacement(from_text, to_text);
 
-    free(from_text);
-    free(to_text);
+    Z_Free(from_text);
+    Z_Free(to_text);
 
     return NULL;
 }

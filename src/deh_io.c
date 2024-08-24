@@ -85,7 +85,7 @@ deh_context_t *DEH_OpenLump(int lumpnum)
     context->input_buffer_len = W_LumpLength(lumpnum);
     context->input_buffer_pos = 0;
 
-    context->filename = malloc(9);
+    context->filename = Z_Malloc(9, PU_STATIC, NULL);
     M_StringCopy(context->filename, lumpinfo[lumpnum]->name, 9);
 
     return context;
@@ -97,7 +97,7 @@ void DEH_CloseFile(deh_context_t *context)
 {
     W_ReleaseLumpNum(context->lumpnum);
 
-    free(context->filename);
+    Z_Free(context->filename);
     Z_Free(context->readbuffer);
     Z_Free(context);
 }
@@ -257,9 +257,9 @@ void DEH_Warning(deh_context_t *context, const char *msg, ...)
 
     va_start(args, msg);
 
-    fprintf(stderr, "%s:%i: warning: ", context->filename, context->linenum);
-    vfprintf(stderr, msg, args);
-    fprintf(stderr, "\n");
+    printf("%s:%i: warning: ", context->filename, context->linenum);
+    vprintf(msg, args);
+    printf("\n");
 
     va_end(args);
 }
@@ -270,9 +270,9 @@ void DEH_Error(deh_context_t *context, const char *msg, ...)
 
     va_start(args, msg);
 
-    fprintf(stderr, "%s:%i: ", context->filename, context->linenum);
-    vfprintf(stderr, msg, args);
-    fprintf(stderr, "\n");
+    printf("%s:%i: ", context->filename, context->linenum);
+    vprintf(msg, args);
+    printf("\n");
 
     va_end(args);
 

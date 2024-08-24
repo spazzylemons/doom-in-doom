@@ -62,7 +62,7 @@ void M_NormalizeSlashes(char *str);
                 fast = fast->next_member->next_member;            \
                 slow = slow->next_member;                         \
                 if (slow == fast) {                               \
-                    fprintf(stderr, "loop in linked list " # list " in %s:%d", __FILE__, __LINE__); \
+                    printf("loop in linked list " # list " in %s:%d", __FILE__, __LINE__); \
                     __builtin_trap();                             \
                 }                                                 \
             }                                                     \

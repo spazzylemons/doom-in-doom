@@ -43,23 +43,6 @@ int main(int argc, char **argv)
 
     I_RV_Init();
 
-    myargc = argc;
-    myargv = malloc(argc * sizeof(char *));
-    assert(myargv != NULL);
-
-    for (int i = 0; i < argc; i++)
-    {
-        myargv[i] = M_StringDuplicate(argv[i]);
-    }
-
-    //!
-    // Print the program version and exit.
-    //
-    if (M_ParmExists("-version") || M_ParmExists("--version")) {
-        puts(PACKAGE_STRING);
-        exit(0);
-    }
-
     // start doom
 
     D_DoomMain ();
