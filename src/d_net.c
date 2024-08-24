@@ -109,7 +109,6 @@ static void LoadGameSettings(net_gamesettings_t *settings)
     startepisode = settings->episode;
     startmap = settings->map;
     startskill = settings->skill;
-    startloadgame = settings->loadgame;
     lowres_turn = settings->lowres_turn;
     nomonsters = settings->nomonsters;
     fastparm = settings->fast_monsters;
@@ -141,7 +140,6 @@ static void SaveGameSettings(net_gamesettings_t *settings)
     settings->episode = startepisode;
     settings->map = startmap;
     settings->skill = startskill;
-    settings->loadgame = startloadgame;
     settings->gameversion = gameversion;
     settings->nomonsters = nomonsters;
     settings->fast_monsters = fastparm;

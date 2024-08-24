@@ -242,9 +242,6 @@ extern  wbstartstruct_t		wminfo;
 // Internal parameters, used for engine.
 //
 
-// File handling stuff.
-extern  char        *savegamedir;
-
 // if true, load all graphics at level load
 extern  boolean         precache;
 

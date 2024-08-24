@@ -29,14 +29,6 @@
 
 #define SAVESTRINGSIZE 24
 
-// temporary filename to use while saving.
-
-char *P_TempSaveGameFile(void);
-
-// filename to use for a savegame slot
-
-char *P_SaveGameFile(int slot);
-
 // Savegame file header read/write functions
 
 boolean P_ReadSaveGameHeader(void);
@@ -58,7 +50,6 @@ void P_UnArchiveThinkers (void);
 void P_ArchiveSpecials (void);
 void P_UnArchiveSpecials (void);
 
-extern FILE *save_stream;
 extern boolean savegame_error;
 
 

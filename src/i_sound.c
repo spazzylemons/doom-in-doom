@@ -21,17 +21,10 @@
 #include "config.h"
 #include "doomtype.h"
 
-#include "gusconf.h"
 #include "i_sound.h"
 #include "i_video.h"
 #include "m_argv.h"
 #include "m_config.h"
-
-#ifndef DISABLE_SDL2MIXER
-
-#include "SDL_mixer.h"
-
-#endif  // DISABLE_SDL2MIXER
 
 
 // Sound sample rate to use for digital output (Hz)
@@ -433,8 +426,5 @@ void I_BindSoundVariables(void)
     M_BindIntVariable("snd_samplerate",          &snd_samplerate);
     M_BindIntVariable("snd_cachesize",           &snd_cachesize);
     M_BindIntVariable("snd_pitchshift",          &snd_pitchshift);
-
-    M_BindStringVariable("gus_patch_path",       &gus_patch_path);
-    M_BindIntVariable("gus_ram_kb",              &gus_ram_kb);
 }
 

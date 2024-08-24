@@ -24,7 +24,6 @@ OBJS := \
     $(O)/deh_weapon.o \
     $(O)/d_event.o \
     $(O)/d_items.o \
-    $(O)/d_iwad.o \
     $(O)/d_loop.o \
     $(O)/d_main.o \
     $(O)/d_mode.o \
@@ -36,7 +35,6 @@ OBJS := \
     $(O)/f_finale.o \
     $(O)/f_wipe.o \
     $(O)/g_game.o \
-    $(O)/gusconf.o \
     $(O)/hu_lib.o \
     $(O)/hu_stuff.o \
     $(O)/i_main.o \
@@ -85,7 +83,6 @@ OBJS := \
     $(O)/sha1.o \
     $(O)/sounds.o \
     $(O)/s_sound.o \
-    $(O)/statdump.o \
     $(O)/st_lib.o \
     $(O)/st_stuff.o \
     $(O)/tables.o \

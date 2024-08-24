@@ -44,8 +44,6 @@
 // Location where all configuration data is stored - 
 // default.cfg, savegames, etc.
 
-const char *configdir;
-
 static char *autoload_path = "";
 
 // Default filenames for configuration files.
@@ -97,7 +95,6 @@ typedef struct
 {
     default_t *defaults;
     int numdefaults;
-    const char *filename;
 } default_collection_t;
 
 #define CONFIG_VARIABLE_GENERIC(name, type) \
@@ -691,7 +688,6 @@ static default_collection_t doom_defaults =
 {
     doom_defaults_list,
     arrlen(doom_defaults_list),
-    NULL,
 };
 
 //! @begin_config_file extended
@@ -2064,7 +2060,6 @@ static default_collection_t extra_defaults =
 {
     extra_defaults_list,
     arrlen(extra_defaults_list),
-    NULL,
 };
 
 // Search a collection for a variable
@@ -2114,262 +2109,6 @@ static const int scantokey[128] =
     0,      0,      0,      0,      0,      0,      KEY_PRTSCR, 0
 };
 
-
-static void SaveDefaultCollection(default_collection_t *collection)
-{
-    default_t *defaults;
-    int i, v;
-    FILE *f;
-	
-    f = M_fopen(collection->filename, "w");
-    if (!f)
-	return; // can't write the file, but don't complain
-
-    defaults = collection->defaults;
-		
-    for (i=0 ; i<collection->numdefaults ; i++)
-    {
-        int chars_written;
-
-        // Ignore unbound variables
-
-        if (!defaults[i].bound)
-        {
-            continue;
-        }
-
-        // Print the name and line up all values at 30 characters
-
-        chars_written = fprintf(f, "%s ", defaults[i].name);
-
-        for (; chars_written < 30; ++chars_written)
-            fprintf(f, " ");
-
-        // Print the value
-
-        switch (defaults[i].type) 
-        {
-            case DEFAULT_KEY:
-
-                // use the untranslated version if we can, to reduce
-                // the possibility of screwing up the user's config
-                // file
-                
-                v = *defaults[i].location.i;
-
-                if (v == KEY_RSHIFT)
-                {
-                    // Special case: for shift, force scan code for
-                    // right shift, as this is what Vanilla uses.
-                    // This overrides the change check below, to fix
-                    // configuration files made by old versions that
-                    // mistakenly used the scan code for left shift.
-
-                    v = 54;
-                }
-                else if (defaults[i].untranslated
-                      && v == defaults[i].original_translated)
-                {
-                    // Has not been changed since the last time we
-                    // read the config file.
-
-                    v = defaults[i].untranslated;
-                }
-                else
-                {
-                    // search for a reverse mapping back to a scancode
-                    // in the scantokey table
-
-                    int s;
-
-                    for (s=0; s<128; ++s)
-                    {
-                        if (scantokey[s] == v)
-                        {
-                            v = s;
-                            break;
-                        }
-                    }
-                }
-
-	        fprintf(f, "%i", v);
-                break;
-
-            case DEFAULT_INT:
-	        fprintf(f, "%i", *defaults[i].location.i);
-                break;
-
-            case DEFAULT_INT_HEX:
-	        fprintf(f, "0x%x", *defaults[i].location.i);
-                break;
-
-            case DEFAULT_FLOAT:
-                fprintf(f, "%f", *defaults[i].location.f);
-                break;
-
-            case DEFAULT_STRING:
-	        fprintf(f,"\"%s\"", *defaults[i].location.s);
-                break;
-        }
-
-        fprintf(f, "\n");
-    }
-
-    fclose (f);
-}
-
-// Parses integer values in the configuration file
-
-static int ParseIntParameter(const char *strparm)
-{
-    int parm;
-
-    if (strparm[0] == '0' && strparm[1] == 'x')
-        sscanf(strparm+2, "%x", (unsigned int *) &parm);
-    else
-        sscanf(strparm, "%i", &parm);
-
-    return parm;
-}
-
-static void SetVariable(default_t *def, const char *value)
-{
-    int intparm;
-
-    // parameter found
-
-    switch (def->type)
-    {
-        case DEFAULT_STRING:
-            *def->location.s = M_StringDuplicate(value);
-            break;
-
-        case DEFAULT_INT:
-        case DEFAULT_INT_HEX:
-            *def->location.i = ParseIntParameter(value);
-            break;
-
-        case DEFAULT_KEY:
-
-            // translate scancodes read from config
-            // file (save the old value in untranslated)
-
-            intparm = ParseIntParameter(value);
-            def->untranslated = intparm;
-            if (intparm >= 0 && intparm < 128)
-            {
-                intparm = scantokey[intparm];
-            }
-            else
-            {
-                intparm = 0;
-            }
-
-            def->original_translated = intparm;
-            *def->location.i = intparm;
-            break;
-
-        case DEFAULT_FLOAT:
-        {
-            // Different locales use different decimal separators.
-            // However, the choice of the current locale isn't always
-            // under our own control. If the atof() function fails to
-            // parse the string representing the floating point number
-            // using the current locale's decimal separator, it will
-            // return 0, resulting in silent sound effects. To
-            // mitigate this, we replace the first non-digit,
-            // non-minus character in the string with the current
-            // locale's decimal separator before passing it to atof().
-            struct lconv *lc = localeconv();
-            char dec, *str;
-            int i = 0;
-
-            dec = lc->decimal_point[0];
-            str = M_StringDuplicate(value);
-
-            // Skip sign indicators.
-            if (str[i] == '-' || str[i] == '+')
-            {
-                i++;
-            }
-
-            for ( ; str[i] != '\0'; i++)
-            {
-                if (!isdigit(str[i]))
-                {
-                    str[i] = dec;
-                    break;
-                }
-            }
-
-            *def->location.f = (float) atof(str);
-            free(str);
-        }
-            break;
-    }
-}
-
-static void LoadDefaultCollection(default_collection_t *collection)
-{
-    FILE *f;
-    default_t *def;
-    char defname[80];
-    char strparm[100];
-
-    // read the file in, overriding any set defaults
-    f = M_fopen(collection->filename, "r");
-
-    if (f == NULL)
-    {
-        // File not opened, but don't complain. 
-        // It's probably just the first time they ran the game.
-
-        return;
-    }
-
-    while (!feof(f))
-    {
-        if (fscanf(f, "%79s %99[^\n]\n", defname, strparm) != 2)
-        {
-            // This line doesn't match
-
-            continue;
-        }
-
-        // Find the setting in the list
-
-        def = SearchCollection(collection, defname);
-
-        if (def == NULL || !def->bound)
-        {
-            // Unknown variable?  Unbound variables are also treated
-            // as unknown.
-
-            continue;
-        }
-
-        // Strip off trailing non-printable characters (\r characters
-        // from DOS text files)
-
-        while (strlen(strparm) > 0 && !isprint(strparm[strlen(strparm)-1]))
-        {
-            strparm[strlen(strparm)-1] = '\0';
-        }
-
-        // Surrounded by quotes? If so, remove them.
-        if (strlen(strparm) >= 2
-         && strparm[0] == '"' && strparm[strlen(strparm) - 1] == '"')
-        {
-            strparm[strlen(strparm) - 1] = '\0';
-            memmove(strparm, strparm + 1, sizeof(strparm) - 1);
-        }
-
-        SetVariable(def, strparm);
-    }
-
-    fclose (f);
-}
-
 // Set the default filenames to use for configuration files.
 
 void M_SetConfigFilenames(const char *main_config, const char *extra_config)
@@ -2384,33 +2123,6 @@ void M_SetConfigFilenames(const char *main_config, const char *extra_config)
 
 void M_SaveDefaults (void)
 {
-    SaveDefaultCollection(&doom_defaults);
-    SaveDefaultCollection(&extra_defaults);
-}
-
-//
-// Save defaults to alternate filenames
-//
-
-void M_SaveDefaultsAlternate(const char *main, const char *extra)
-{
-    const char *orig_main;
-    const char *orig_extra;
-
-    // Temporarily change the filenames
-
-    orig_main = doom_defaults.filename;
-    orig_extra = extra_defaults.filename;
-
-    doom_defaults.filename = main;
-    extra_defaults.filename = extra;
-
-    M_SaveDefaults();
-
-    // Restore normal filenames
-
-    doom_defaults.filename = orig_main;
-    extra_defaults.filename = orig_extra;
 }
 
 //
@@ -2423,55 +2135,6 @@ void M_LoadDefaults (void)
 
     // This variable is a special snowflake for no good reason.
     M_BindStringVariable("autoload_path", &autoload_path);
-
-    // check for a custom default file
-
-    //!
-    // @arg <file>
-    // @vanilla
-    //
-    // Load main configuration from the specified file, instead of the
-    // default.
-    //
-
-    i = M_CheckParmWithArgs("-config", 1);
-
-    if (i)
-    {
-	doom_defaults.filename = myargv[i+1];
-	printf ("	default file: %s\n",doom_defaults.filename);
-    }
-    else
-    {
-        doom_defaults.filename
-            = M_StringJoin(configdir, default_main_config, NULL);
-    }
-
-    printf("saving config in %s\n", doom_defaults.filename);
-
-    //!
-    // @arg <file>
-    //
-    // Load additional configuration from the specified file, instead of
-    // the default.
-    //
-
-    i = M_CheckParmWithArgs("-extraconfig", 1);
-
-    if (i)
-    {
-        extra_defaults.filename = myargv[i+1];
-        printf("        extra configuration file: %s\n", 
-               extra_defaults.filename);
-    }
-    else
-    {
-        extra_defaults.filename
-            = M_StringJoin(configdir, default_extra_config, NULL);
-    }
-
-    LoadDefaultCollection(&doom_defaults);
-    LoadDefaultCollection(&extra_defaults);
 }
 
 // Get a configuration file variable by its name
@@ -2538,25 +2201,6 @@ void M_BindStringVariable(const char *name, char **location)
     variable->bound = true;
 }
 
-// Set the value of a particular variable; an API function for other
-// parts of the program to assign values to config variables by name.
-
-boolean M_SetVariable(const char *name, const char *value)
-{
-    default_t *variable;
-
-    variable = GetDefaultForName(name);
-
-    if (variable == NULL || !variable->bound)
-    {
-        return false;
-    }
-
-    SetVariable(variable, value);
-
-    return true;
-}
-
 // Get the value of a variable.
 
 int M_GetIntVariable(const char *name)
@@ -2602,109 +2246,4 @@ float M_GetFloatVariable(const char *name)
     }
 
     return *variable->location.f;
-}
-
-// Get the path to the default configuration dir to use, if NULL
-// is passed to M_SetConfigDir.
-
-static char *GetDefaultConfigDir(void)
-{
-    return M_StringDuplicate(exedir);
-}
-
-// 
-// SetConfigDir:
-//
-// Sets the location of the configuration directory, where configuration
-// files are stored - default.cfg, chocolate-doom.cfg, savegames, etc.
-//
-
-void M_SetConfigDir(const char *dir)
-{
-    // Use the directory that was passed, or find the default.
-
-    if (dir != NULL)
-    {
-        configdir = dir;
-    }
-    else
-    {
-        configdir = GetDefaultConfigDir();
-    }
-
-    if (strcmp(configdir, exedir) != 0)
-    {
-        printf("Using %s for configuration and saves\n", configdir);
-    }
-
-    // Make the directory if it doesn't already exist:
-
-    M_MakeDirectory(configdir);
-}
-
-//
-// Calculate the path to the directory to use to store save games.
-// Creates the directory as necessary.
-//
-
-char *M_GetSaveGameDir(const char *iwadname)
-{
-    char *savegamedir;
-    char *topdir;
-    int p;
-
-    //!
-    // @arg <directory>
-    //
-    // Specify a path from which to load and save games. If the directory
-    // does not exist then it will automatically be created.
-    //
-
-    p = M_CheckParmWithArgs("-savedir", 1);
-    if (p)
-    {
-        savegamedir = myargv[p + 1];
-        if (!M_FileExists(savegamedir))
-        {
-            M_MakeDirectory(savegamedir);
-        }
-
-        // add separator at end just in case
-        savegamedir = M_StringJoin(savegamedir, DIR_SEPARATOR_S, NULL);
-
-        printf("Save directory changed to %s.\n", savegamedir);
-    }
-#ifdef _WIN32
-    // In -cdrom mode, we write savegames to a specific directory
-    // in addition to configs.
-
-    else if (M_ParmExists("-cdrom"))
-    {
-        savegamedir = M_StringDuplicate(configdir);
-    }
-#endif
-    // If not "doing" a configuration directory (Windows), don't "do"
-    // a savegame directory, either.
-    else if (!strcmp(configdir, exedir))
-    {
-	savegamedir = M_StringDuplicate("");
-    }
-    else
-    {
-        // ~/.local/share/chocolate-doom/savegames
-
-        topdir = M_StringJoin(configdir, "savegames", NULL);
-        M_MakeDirectory(topdir);
-
-        // eg. ~/.local/share/chocolate-doom/savegames/doom2.wad/
-
-        savegamedir = M_StringJoin(topdir, DIR_SEPARATOR_S, iwadname,
-                                   DIR_SEPARATOR_S, NULL);
-
-        M_MakeDirectory(savegamedir);
-
-        free(topdir);
-    }
-
-    return savegamedir;
 }

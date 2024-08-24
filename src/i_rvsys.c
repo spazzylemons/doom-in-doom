@@ -44,7 +44,10 @@ static int *sizes;
 
 static FILE *wadfile;
 
-static char save_name[32];//
+static char save_name[32];
+static FILE *save_file;
+
+//
 // DOOM keyboard definition.
 // This is the stuff configured by Setup.Exe.
 // Most key data are simple ascii (uppercased).
@@ -145,8 +148,6 @@ static int xlatekey(SDL_Keycode sym)
 
 }
 
-static int timetic;
-
 void I_RV_EndFrame(const uint8_t *screen) {
     if (!SDL_LockSurface(draw_surface)) {
         const uint8_t *pixel = screen;
@@ -164,7 +165,6 @@ void I_RV_EndFrame(const uint8_t *screen) {
 
     // temp
     SDL_Delay(1000 / 35);
-    ++timetic;
 }
 
 void I_RV_SetPalette(const uint8_t *palette) {
@@ -182,7 +182,7 @@ int I_RV_NextEvent(event_t *ev) {
         switch (event.type) {
             case SDL_KEYDOWN:
                 ev->type = ev_keydown;
-                ev->data1 = xlatekey(event.key.keysym.sym);
+                ev->data3 = ev->data1 = xlatekey(event.key.keysym.sym);
                 return 1;
             case SDL_KEYUP:
                 ev->type = ev_keyup;
@@ -223,50 +223,51 @@ void I_RV_ReadLump(int lump, void *dest) {
     fread(dest, sizes[lump], 1, wadfile);
 }
 
-static void get_savegame_name(int id) {
+static void get_savename(int id) {
     sprintf(save_name, "save%d.dsg", id);
 }
 
-int I_RV_FileSize(int id) {
-    get_savegame_name(id);
-    FILE *f = fopen(save_name, "rb");
-    if (f == NULL) {
-        return 0;
-    }
-
-    fseek(f, 0, SEEK_END);
-    int result = ftell(f);
-    fclose(f);
-    return result;
+static void savegame_open(int id, const char *mode) {
+    get_savename(id);
+    save_file = fopen(save_name, mode);
 }
 
-// Load a save file.
-int I_RV_LoadFile(int id, void *data, int size) {
-    get_savegame_name(id);
-    FILE *f = fopen(save_name, "rb");
-    if (f == NULL) {
-        return 0;
-    }
-
-    int result = fread(data, size, 1, f);
-    fclose(f);
-    return result;
+int I_RV_SaveRead(void *data, int size) {
+    return fread(data, size, 1, save_file);
 }
 
-// Save a save file.
-void I_RV_SaveFile(int id, const void *data, int size) {
-    get_savegame_name(id);
-    FILE *f = fopen(save_name, "wb");
-    if (f == NULL) {
-        return;
-    }
-
-    fwrite(data, size, 1, f);
-    fclose(f);
+void I_RV_SaveWrite(const void *data, int size) {
+    fwrite(data, size, 1, save_file);
 }
 
-int I_RV_GetTime(void) {
-    return timetic;
+int I_RV_SaveSize(void) {
+    return ftell(save_file);
+}
+
+int I_RV_SaveLoad(int id) {
+    if (save_file != NULL) {
+        fclose(save_file);
+    }
+    savegame_open(id, "rb");
+    return save_file != NULL;
+}
+
+void I_RV_SaveStart(int id) {
+    if (save_file != NULL) {
+        fclose(save_file);
+    }
+    savegame_open(id, "wb");
+}
+
+void I_RV_SaveCommit(void) {
+    // TODO no temp file handling, so this is the same as close.
+    fclose(save_file);
+    save_file = NULL;
+}
+
+void I_RV_SaveClose(void) {
+    fclose(save_file);
+    save_file = NULL;
 }
 
 void I_RV_Init(void) {

@@ -21,6 +21,8 @@
 #include "doomtype.h"
 #include "i_video.h"
 
+extern int ticcount;
+
 //
 // I_GetTime
 // returns time in 1/35th second tics
@@ -28,7 +30,7 @@
 
 int  I_GetTime (void)
 {
-    return I_RV_GetTime();
+    return ticcount;
 }
 
 void I_WaitVBL(int count)

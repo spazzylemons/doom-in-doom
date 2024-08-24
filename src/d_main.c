@@ -33,8 +33,6 @@
 #include "dstrings.h"
 #include "sounds.h"
 
-#include "d_iwad.h"
-
 #include "z_zone.h"
 #include "w_wad.h"
 #include "s_sound.h"
@@ -64,7 +62,6 @@
 
 #include "p_setup.h"
 #include "r_local.h"
-#include "statdump.h"
 
 #include "d_main.h"
 
@@ -83,13 +80,7 @@ void D_DoomLoop (void);
 
 static char *gamedescription;
 
-// Location where savegames are stored
-
-char *          savegamedir;
-
 // location of IWAD and WAD files
-
-char *          iwadfile;
 
 
 boolean		devparm;	// started game with -devparm
@@ -103,7 +94,6 @@ skill_t		startskill;
 int             startepisode;
 int		startmap;
 boolean		autostart;
-int             startloadgame;
 
 boolean		advancedemo;
 
@@ -386,16 +376,12 @@ boolean D_GrabMouseCallback(void)
 //
 void D_RunFrame()
 {
-    int nowtime;
-    int tics;
-    static int wipestart;
     static boolean wipe;
 
     if (wipe)
     {
-        wipestart = nowtime;
         wipe = !wipe_ScreenWipe(wipe_Melt
-                               , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics);
+                               , 0, 0, SCREENWIDTH, SCREENHEIGHT, 1);
         I_UpdateNoBlit ();
         M_Drawer ();                            // menu is drawn even on top of wipes
         I_FinishUpdate ();                      // page flip or blit buffer
@@ -416,8 +402,6 @@ void D_RunFrame()
         {
             // start wipe on this frame
             wipe_EndScreen(0, 0, SCREENWIDTH, SCREENHEIGHT);
-
-            wipestart = I_GetTime () - 1;
         } else {
             // normal update
             I_FinishUpdate ();              // page flip or blit buffer
@@ -747,31 +731,28 @@ void D_IdentifyVersion(void)
     // any known IWAD name, we may have a dilemma.  Try to 
     // identify by its contents.
 
-    if (gamemission == none)
-    {
-        unsigned int i;
+	unsigned int i;
 
-        for (i=0; i<numlumps; ++i)
-        {
-            if (!strncasecmp(lumpinfo[i]->name, "MAP01", 8))
-            {
-                gamemission = doom2;
-                break;
-            } 
-            else if (!strncasecmp(lumpinfo[i]->name, "E1M1", 8))
-            {
-                gamemission = doom;
-                break;
-            }
-        }
+	for (i=0; i<numlumps; ++i)
+	{
+		if (!strncasecmp(lumpinfo[i]->name, "MAP01", 8))
+		{
+			gamemission = doom2;
+			break;
+		} 
+		else if (!strncasecmp(lumpinfo[i]->name, "E1M1", 8))
+		{
+			gamemission = doom;
+			break;
+		}
+	}
 
-        if (gamemission == none)
-        {
-            // Still no idea.  I don't think this is going to work.
+	if (gamemission == none)
+	{
+		// Still no idea.  I don't think this is going to work.
 
-            I_Error("Unknown or invalid IWAD file.");
-        }
-    }
+		I_Error("Unknown or invalid IWAD file.");
+	}
 
     // Make sure gamemode is set up correctly
 
@@ -1241,33 +1222,6 @@ void D_DoomMain (void)
 
     if (devparm)
 	DEH_printf(D_DEVSTR);
-    
-    // find which dir to use for config files
-
-#ifdef _WIN32
-
-    //!
-    // @category obscure
-    // @platform windows
-    // @vanilla
-    //
-    // Save configuration data and savegames in c:\doomdata,
-    // allowing play from CD.
-    //
-
-    if (M_ParmExists("-cdrom"))
-    {
-        printf(D_CDROM);
-
-        M_SetConfigDir("c:\\doomdata\\");
-    }
-    else
-#endif
-    {
-        // Auto-detect the configuration dir.
-
-        M_SetConfigDir(NULL);
-    }
 
     //!
     // @category game
@@ -1307,17 +1261,6 @@ void D_DoomMain (void)
 
     // Save configuration at exit.
     I_AtExit(M_SaveDefaults, false);
-
-    // Find main IWAD file and load it.
-    iwadfile = D_FindIWAD(IWAD_MASK_DOOM, &gamemission);
-
-    // None found?
-
-    if (iwadfile == NULL)
-    {
-        I_Error("Game mode indeterminate.  No IWAD file was found.  Try\n"
-                "specifying one with the '-iwad' command line parameter.\n");
-    }
 
     modifiedgame = false;
 
@@ -1408,8 +1351,6 @@ void D_DoomMain (void)
     // Set the gamedescription string. This is only possible now that
     // we've finished loading Dehacked patches.
     D_SetGameDescription();
-
-    savegamedir = M_GetSaveGameDir(D_SaveGameIWADName(gamemission, gamevariant));
 
     if (W_CheckNumForName("SS_START") >= 0
      || W_CheckNumForName("FF_END") >= 0)
@@ -1545,30 +1486,6 @@ void D_DoomMain (void)
         testcontrols = true;
     }
 
-    // Check for load game parameter
-    // We do this here and save the slot number, so that the network code
-    // can override it or send the load slot to other players.
-
-    //!
-    // @category game
-    // @arg <s>
-    // @vanilla
-    //
-    // Load the game in slot s.
-    //
-
-    p = M_CheckParmWithArgs("-loadgame", 1);
-    
-    if (p)
-    {
-        startloadgame = atoi(myargv[p+1]);
-    }
-    else
-    {
-        // Not loading a game
-        startloadgame = -1;
-    }
-
     DEH_printf("M_Init: Init miscellaneous info.\n");
     M_Init ();
 
@@ -1599,12 +1516,6 @@ void D_DoomMain (void)
     if (gamemode == commercial && W_CheckNumForName("map01") < 0)
         storedemo = true;
 
-    if (M_CheckParmWithArgs("-statdump", 1))
-    {
-        I_AtExit(StatDump, true);
-        DEH_printf("External statistics registered.\n");
-    }
-
     //!
     // @arg <x>
     // @category demo
@@ -1634,12 +1545,6 @@ void D_DoomMain (void)
     {
 	G_TimeDemo (demolumpname);
 	D_DoomLoop ();  // never returns
-    }
-	
-    if (startloadgame >= 0)
-    {
-        M_StringCopy(file, P_SaveGameFile(startloadgame), sizeof(file));
-	G_LoadGame(file);
     }
 	
     if (gameaction != ga_loadgame )

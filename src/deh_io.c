@@ -28,15 +28,8 @@
 #include "deh_defs.h"
 #include "deh_io.h"
 
-typedef enum
-{
-    DEH_INPUT_FILE,
-    DEH_INPUT_LUMP
-} deh_input_type_t;
-
 struct deh_context_s
 {
-    deh_input_type_t type;
     char *filename;
 
     // If the input comes from a memory buffer, pointer to the memory
@@ -45,10 +38,6 @@ struct deh_context_s
     size_t input_buffer_len;
     unsigned int input_buffer_pos;
     int lumpnum;
-
-    // If the input comes from a file, the file stream for reading
-    // data.
-    FILE *stream;
 
     // Current line number that we have reached:
     int linenum;
@@ -80,28 +69,6 @@ static deh_context_t *DEH_NewContext(void)
     return context;
 }
 
-// Open a dehacked file for reading
-// Returns NULL if open failed
-
-deh_context_t *DEH_OpenFile(const char *filename)
-{
-    FILE *fstream;
-    deh_context_t *context;
-
-    fstream = M_fopen(filename, "r");
-
-    if (fstream == NULL)
-        return NULL;
-
-    context = DEH_NewContext();
-
-    context->type = DEH_INPUT_FILE;
-    context->stream = fstream;
-    context->filename = M_StringDuplicate(filename);
-
-    return context;
-}
-
 // Open a WAD lump for reading.
 
 deh_context_t *DEH_OpenLump(int lumpnum)
@@ -113,7 +80,6 @@ deh_context_t *DEH_OpenLump(int lumpnum)
 
     context = DEH_NewContext();
 
-    context->type = DEH_INPUT_LUMP;
     context->lumpnum = lumpnum;
     context->input_buffer = lump;
     context->input_buffer_len = W_LumpLength(lumpnum);
@@ -129,30 +95,11 @@ deh_context_t *DEH_OpenLump(int lumpnum)
 
 void DEH_CloseFile(deh_context_t *context)
 {
-    if (context->type == DEH_INPUT_FILE)
-    {
-        fclose(context->stream);
-    }
-    else if (context->type == DEH_INPUT_LUMP)
-    {
-        W_ReleaseLumpNum(context->lumpnum);
-    }
+    W_ReleaseLumpNum(context->lumpnum);
 
     free(context->filename);
     Z_Free(context->readbuffer);
     Z_Free(context);
-}
-
-int DEH_GetCharFile(deh_context_t *context)
-{
-    if (feof(context->stream))
-    {
-        // end of file
-
-        return -1;
-    }
-
-    return fgetc(context->stream);
 }
 
 int DEH_GetCharLump(deh_context_t *context)
@@ -188,30 +135,12 @@ int DEH_GetChar(deh_context_t *context)
 
     do
     {
-        switch (context->type)
-        {
-            case DEH_INPUT_FILE:
-                result = DEH_GetCharFile(context);
-                break;
-
-            case DEH_INPUT_LUMP:
-                result = DEH_GetCharLump(context);
-                break;
-        }
+        result = DEH_GetCharLump(context);
 
         // Handle \r characters not paired with \n
         if (last_was_cr && result != '\n')
         {
-            switch (context->type)
-            {
-                case DEH_INPUT_FILE:
-                    ungetc(result, context->stream);
-                    break;
-
-                case DEH_INPUT_LUMP:
-                    --context->input_buffer_pos;
-                    break;
-            }
+            --context->input_buffer_pos;
 
             return '\r';
         }

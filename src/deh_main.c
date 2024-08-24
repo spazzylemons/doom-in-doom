@@ -22,7 +22,6 @@
 
 #include "doomtype.h"
 #include "i_system.h"
-#include "d_iwad.h"
 #include "m_argv.h"
 #include "w_wad.h"
 

@@ -28,9 +28,6 @@
 extern  int	myargc;
 extern  char**	myargv;
 
-extern char *exedir;
-void M_SetExeDir(void);
-
 // Returns the position of the given parameter
 // in the arg list (0 if not found).
 int M_CheckParm (const char* check);
@@ -39,15 +36,8 @@ int M_CheckParm (const char* check);
 // following the specified argument.
 int M_CheckParmWithArgs(const char *check, int num_args);
 
-void M_FindResponseFile(void);
-void M_AddLooseFiles(void);
-
 // Parameter has been specified?
 
 boolean M_ParmExists(const char *check);
-
-// Get name of executable used to run this program:
-
-const char *M_GetExecutableName(void);
 
 #endif

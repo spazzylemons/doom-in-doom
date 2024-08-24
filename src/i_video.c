@@ -37,6 +37,8 @@
 #include "z_zone.h"
 #include "i_rvsys.h"
 
+int ticcount;
+
 // display has been set up?
 
 static boolean initialized = false;
@@ -209,4 +211,5 @@ void I_BindVideoVariables(void)
 void I_EndFrame(void)
 {
     I_RV_EndFrame(I_VideoBuffer);
+    ++ticcount;
 }

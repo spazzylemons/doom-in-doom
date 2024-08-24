@@ -42,7 +42,7 @@ void G_DeferedPlayDemo (const char* demo);
 
 // Can be called by the startup code or M_Responder,
 // calls P_SetupLevel or W_EnterWorld.
-void G_LoadGame (char* name);
+void G_LoadGame (int slot);
 
 void G_DoLoadGame (void);
 

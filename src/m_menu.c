@@ -29,6 +29,7 @@
 #include "d_main.h"
 #include "deh_main.h"
 
+#include "i_rvsys.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "i_timer.h"
@@ -107,7 +108,6 @@ char gammamsg[5][26] =
 int			saveStringEnter;              
 int             	saveSlot;	// which slot to save in
 int			saveCharIndex;	// which char we're editing
-static boolean          joypadSave = false; // was the save action initiated by joypad?
 // old save description before edit
 char			saveOldString[SAVESTRINGSIZE];  
 
@@ -494,25 +494,21 @@ menu_t  SaveDef =
 //
 void M_ReadSaveStrings(void)
 {
-    FILE   *handle;
     int     i;
-    char    name[256];
 
     for (i = 0;i < load_end;i++)
     {
-        int retval;
-        M_StringCopy(name, P_SaveGameFile(i), sizeof(name));
-
-	handle = M_fopen(name, "rb");
-        if (handle == NULL)
-        {
-            M_StringCopy(savegamestrings[i], EMPTYSTRING, SAVESTRINGSIZE);
-            LoadMenu[i].status = 0;
-            continue;
+        if (I_RV_SaveLoad(i)) {
+            if (I_RV_SaveRead(&savegamestrings[i][0], SAVESTRINGSIZE) == 1) {
+                LoadMenu[i].status = 1;
+                I_RV_SaveClose();
+                continue;
+            }
+            I_RV_SaveClose();
         }
-        retval = fread(&savegamestrings[i], 1, SAVESTRINGSIZE, handle);
-	fclose(handle);
-        LoadMenu[i].status = retval == SAVESTRINGSIZE;
+
+        M_StringCopy(savegamestrings[i], EMPTYSTRING, SAVESTRINGSIZE);
+        LoadMenu[i].status = 0;
     }
 }
 
@@ -564,11 +560,7 @@ void M_DrawSaveLoadBorder(int x,int y)
 //
 void M_LoadSelect(int choice)
 {
-    char    name[256];
-	
-    M_StringCopy(name, P_SaveGameFile(choice), sizeof(name));
-
-    G_LoadGame (name);
+    G_LoadGame (choice);
     M_ClearMenus ();
 }
 
@@ -623,37 +615,6 @@ void M_DoSave(int slot)
 }
 
 //
-// Generate a default save slot name when the user saves to
-// an empty slot via the joypad.
-//
-static void SetDefaultSaveName(int slot)
-{
-    // map from IWAD or PWAD?
-    if (strcmp(savegamedir, ""))
-    {
-        M_snprintf(savegamestrings[itemOn], SAVESTRINGSIZE,
-                   "%s", maplumpinfo->name);
-    }
-    else
-    {
-        char *wadname = M_StringDuplicate("doom");
-        char *ext = strrchr(wadname, '.');
-
-        if (ext != NULL)
-        {
-            *ext = '\0';
-        }
-
-        M_snprintf(savegamestrings[itemOn], SAVESTRINGSIZE,
-                   "%s (%s)", maplumpinfo->name,
-                   wadname);
-        free(wadname);
-    }
-    M_ForceUppercase(savegamestrings[itemOn]);
-    joypadSave = false;
-}
-
-//
 // User wants to save. Start string input for M_Responder
 //
 void M_SaveSelect(int choice)
@@ -672,11 +633,6 @@ void M_SaveSelect(int choice)
     if (!strcmp(savegamestrings[choice], EMPTYSTRING))
     {
         savegamestrings[choice][0] = 0;
-
-        if (joypadSave)
-        {
-            SetDefaultSaveName(choice);
-        }
     }
     saveCharIndex = strlen(savegamestrings[choice]);
 }

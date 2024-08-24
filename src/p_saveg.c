@@ -22,6 +22,7 @@
 
 #include "dstrings.h"
 #include "deh_main.h"
+#include "i_rvsys.h"
 #include "i_system.h"
 #include "z_zone.h"
 #include "p_local.h"
@@ -33,45 +34,8 @@
 #include "m_misc.h"
 #include "r_state.h"
 
-FILE *save_stream;
 int savegamelength;
 boolean savegame_error;
-
-// Get the filename of a temporary file to write the savegame to.  After
-// the file has been successfully saved, it will be renamed to the 
-// real file.
-
-char *P_TempSaveGameFile(void)
-{
-    static char *filename = NULL;
-
-    if (filename == NULL)
-    {
-        filename = M_StringJoin(savegamedir, "temp.dsg", NULL);
-    }
-
-    return filename;
-}
-
-// Get the filename of the save game file to use for the specified slot.
-
-char *P_SaveGameFile(int slot)
-{
-    static char *filename = NULL;
-    static size_t filename_size = 0;
-    char basename[32];
-
-    if (filename == NULL)
-    {
-        filename_size = strlen(savegamedir) + 32;
-        filename = malloc(filename_size);
-    }
-
-    DEH_snprintf(basename, 32, SAVEGAMENAME "%d.dsg", slot);
-    M_snprintf(filename, filename_size, "%s%s", savegamedir, basename);
-
-    return filename;
-}
 
 // Endian-safe integer read/write functions
 
@@ -79,7 +43,7 @@ static byte saveg_read8(void)
 {
     byte result = -1;
 
-    if (fread(&result, 1, 1, save_stream) < 1)
+    if (I_RV_SaveRead(&result, 1) < 1)
     {
         if (!savegame_error)
         {
@@ -95,15 +59,7 @@ static byte saveg_read8(void)
 
 static void saveg_write8(byte value)
 {
-    if (fwrite(&value, 1, 1, save_stream) < 1)
-    {
-        if (!savegame_error)
-        {
-            fprintf(stderr, "saveg_write8: Error while writing save game\n");
-
-            savegame_error = true;
-        }
-    }
+    I_RV_SaveWrite(&value, 1);
 }
 
 static short saveg_read16(void)
@@ -150,7 +106,7 @@ static void saveg_read_pad(void)
     int padding;
     int i;
 
-    pos = ftell(save_stream);
+    pos = I_RV_SaveSize();
 
     padding = (4 - (pos & 3)) & 3;
 
@@ -166,7 +122,7 @@ static void saveg_write_pad(void)
     int padding;
     int i;
 
-    pos = ftell(save_stream);
+    pos = I_RV_SaveSize();
 
     padding = (4 - (pos & 3)) & 3;
 

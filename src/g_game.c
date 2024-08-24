@@ -35,6 +35,7 @@
 #include "m_misc.h"
 #include "m_menu.h"
 #include "m_random.h"
+#include "i_rvsys.h"
 #include "i_system.h"
 #include "i_timer.h"
 #include "i_input.h"
@@ -51,7 +52,6 @@
 #include "hu_stuff.h"
 #include "st_stuff.h"
 #include "am_map.h"
-#include "statdump.h"
 
 // Needs access to LFB.
 #include "v_video.h"
@@ -1445,8 +1445,6 @@ void G_DoCompleted (void)
     gamestate = GS_INTERMISSION; 
     viewactive = false; 
     automapactive = false; 
-
-    StatCopy(&wminfo);
  
     WI_Start (&wminfo); 
 } 
@@ -1496,11 +1494,11 @@ void G_DoWorldDone (void)
 // Can be called by the startup code or the menu task. 
 //
 
-char	savename[256];
+int saveslot;
 
-void G_LoadGame (char* name) 
+void G_LoadGame (int slot) 
 { 
-    M_StringCopy(savename, name, sizeof(savename));
+    saveslot = slot;
     gameaction = ga_loadgame; 
 } 
 
@@ -1509,19 +1507,17 @@ void G_DoLoadGame (void)
     int savedleveltime;
 	 
     gameaction = ga_nothing; 
-	 
-    save_stream = M_fopen(savename, "rb");
 
-    if (save_stream == NULL)
+    if (!I_RV_SaveLoad(saveslot))
     {
-        I_Error("Could not load savegame %s", savename);
+        I_Error("Could not load savegame");
     }
 
     savegame_error = false;
 
     if (!P_ReadSaveGameHeader())
     {
-        fclose(save_stream);
+        I_RV_SaveClose();
         return;
     }
 
@@ -1541,7 +1537,7 @@ void G_DoLoadGame (void)
     if (!P_ReadSaveGameEOF())
 	I_Error ("Bad savegame");
 
-    fclose(save_stream);
+    I_RV_SaveClose();
     
     if (setsizeneeded)
 	R_ExecuteSetViewSize ();
@@ -1568,32 +1564,7 @@ G_SaveGame
 
 void G_DoSaveGame (void) 
 { 
-    char *savegame_file;
-    char *temp_savegame_file;
-    char *recovery_savegame_file;
-
-    recovery_savegame_file = NULL;
-    temp_savegame_file = P_TempSaveGameFile();
-    savegame_file = P_SaveGameFile(savegameslot);
-
-    // Open the savegame file for writing.  We write to a temporary file
-    // and then rename it at the end if it was successfully written.
-    // This prevents an existing savegame from being overwritten by
-    // a corrupted one, or if a savegame buffer overrun occurs.
-    save_stream = M_fopen(temp_savegame_file, "wb");
-
-    if (save_stream == NULL)
-    {
-        // Failed to save the game, so we're going to have to abort. But
-        // to be nice, save to somewhere else before we call I_Error().
-        recovery_savegame_file = M_TempFile("recovery.dsg");
-        save_stream = M_fopen(recovery_savegame_file, "wb");
-        if (save_stream == NULL)
-        {
-            I_Error("Failed to open either '%s' or '%s' to write savegame.",
-                    temp_savegame_file, recovery_savegame_file);
-        }
-    }
+    I_RV_SaveStart(savegameslot);
 
     savegame_error = false;
 
@@ -1609,30 +1580,14 @@ void G_DoSaveGame (void)
     // Enforce the same savegame size limit as in Vanilla Doom,
     // except if the vanilla_savegame_limit setting is turned off.
 
-    if (vanilla_savegame_limit && ftell(save_stream) > SAVEGAMESIZE)
+    if (vanilla_savegame_limit && I_RV_SaveSize() > SAVEGAMESIZE)
     {
         I_Error("Savegame buffer overrun");
     }
 
     // Finish up, close the savegame file.
 
-    fclose(save_stream);
-
-    if (recovery_savegame_file != NULL)
-    {
-        // We failed to save to the normal location, but we wrote a
-        // recovery file to the temp directory. Now we can bomb out
-        // with an error.
-        I_Error("Failed to open savegame file '%s' for writing.\n"
-                "But your game has been saved to '%s' for recovery.",
-                temp_savegame_file, recovery_savegame_file);
-    }
-
-    // Now rename the temporary savegame file to the actual savegame
-    // file, overwriting the old savegame if there was one there.
-
-    M_remove(savegame_file);
-    M_rename(temp_savegame_file, savegame_file);
+    I_RV_SaveCommit();
 
     gameaction = ga_nothing;
     M_StringCopy(savedescription, "", sizeof(savedescription));
@@ -2267,10 +2222,9 @@ boolean G_CheckDemoStatus (void)
     if (demorecording) 
     { 
 	*demo_p++ = DEMOMARKER; 
-	M_WriteFile (demoname, demobuffer, demo_p - demobuffer); 
 	Z_Free (demobuffer); 
 	demorecording = false; 
-	I_Error ("Demo %s recorded",demoname); 
+	I_Error ("Demo %s recorded",demoname);  // demo is not actually recorded
     } 
 	 
     return false; 

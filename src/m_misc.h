@@ -26,29 +26,7 @@
 
 #include "doomtype.h"
 
-#ifdef _WIN32
-wchar_t *M_ConvertUtf8ToWide(const char *str);
-char *M_ConvertWideToUtf8(const wchar_t *wstr);
-#endif
-char *M_ConvertUtf8ToSysNativeMB(const char *str);
-char *M_ConvertSysNativeMBToUtf8(const char *str);
-
-FILE *M_fopen(const char *filename, const char *mode);
-int M_remove(const char *path);
-int M_rename(const char *oldname, const char *newname);
-int M_stat(const char *path, struct stat *buf);
-char *M_getenv(const char *name);
-boolean M_WriteFile(const char *name, const void *source, int length);
-int M_ReadFile(const char *name, byte **buffer);
-void M_MakeDirectory(const char *dir);
-char *M_TempFile(const char *s);
-boolean M_FileExists(const char *file);
-char *M_FileCaseExists(const char *file);
-long M_FileLength(FILE *handle);
 boolean M_StrToInt(const char *str, int *result);
-char *M_DirName(const char *path);
-const char *M_BaseName(const char *path);
-void M_ExtractFileBase(const char *path, char *dest);
 void M_ForceUppercase(char *text);
 void M_ForceLowercase(char *text);
 const char *M_StrCaseStr(const char *haystack, const char *needle);

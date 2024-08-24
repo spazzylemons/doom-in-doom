@@ -25,18 +25,21 @@ void I_RV_DumpLumps(lumpinfo_t *lumps);
 // Read a lump.
 void I_RV_ReadLump(int lump, void *dest);
 
-// Get the size of a save file.
-int I_RV_FileSize(int id);
+// SAVE FILES //
 
-// Load a save file. Size is provided if less bytes want to be read (save game strings)
-// Returns 1 if read was successful.
-int I_RV_LoadFile(int id, void *data, int size);
+int I_RV_SaveRead(void *data, int size);
 
-// Save a save file.
-void I_RV_SaveFile(int id, const void *data, int size);
+void I_RV_SaveWrite(const void *data, int size);
 
-// Get the number of tics.
-int I_RV_GetTime(void);
+int I_RV_SaveSize(void);
+
+int I_RV_SaveLoad(int id);
+
+void I_RV_SaveStart(int id);
+
+void I_RV_SaveCommit(void);
+
+void I_RV_SaveClose(void);
 
 _Noreturn void I_RV_Quit(void);
 
