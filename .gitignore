@@ -1,5 +1,6 @@
 build/
 doom
+doom.elf
 *.cfg
 *.wad
 *.dsg

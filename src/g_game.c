@@ -2183,18 +2183,18 @@ boolean G_CheckDemoStatus (void)
 	 
     if (timingdemo) 
     { 
-        float fps;
+        int fps;
         int realtics;
 
 	endtime = I_GetTime (); 
         realtics = endtime - starttime;
-        fps = ((float) gametic * TICRATE) / realtics;
+        fps = (gametic * TICRATE) / realtics;
 
         // Prevent recursive calls
         timingdemo = false;
         demoplayback = false;
 
-	I_Error ("timed %i gametics in %i realtics (%f fps)",
+	I_Error ("timed %i gametics in %i realtics (%d fps)",
                  gametic, realtics, fps);
     } 
 	 

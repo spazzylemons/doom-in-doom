@@ -473,10 +473,6 @@ void R_InitTextures (void)
     int			numtextures2;
 
     int*		directory;
-    
-    int			temp1;
-    int			temp2;
-    int			temp3;
 
     
     // Load the patch names from pnames.lmp.
@@ -522,11 +518,6 @@ void R_InitTextures (void)
     texturecompositesize = Z_Malloc (numtextures * sizeof(*texturecompositesize), PU_STATIC, 0);
     texturewidthmask = Z_Malloc (numtextures * sizeof(*texturewidthmask), PU_STATIC, 0);
     textureheight = Z_Malloc (numtextures * sizeof(*textureheight), PU_STATIC, 0);
-
-    //	Really complex printing shit...
-    temp1 = W_GetNumForName (DEH_String("S_START"));  // P_???????
-    temp2 = W_GetNumForName (DEH_String("S_END")) - 1;
-    temp3 = ((temp2-temp1+63)/64) + ((numtextures+63)/64);
 	
     for (i=0 ; i<numtextures ; i++, directory++)
     {

@@ -45,14 +45,12 @@ static boolean initialized = false;
 
 // disable mouse?
 
-static boolean nomouse = false;
 int usemouse = 1;
 
 // Grab the mouse? (int type for config code). nograbmouse_override allows
 // this to be temporarily disabled via the command line.
 
 static int grabmouse = true;
-static boolean nograbmouse_override = false;
 
 // The screen buffer; this is modified to draw things to the screen
 

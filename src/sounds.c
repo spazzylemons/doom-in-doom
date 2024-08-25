@@ -29,7 +29,7 @@
 //
 
 #define MUSIC(name) \
-    { name, 0, NULL, NULL }
+    { name }
 
 musicinfo_t S_music[] =
 {

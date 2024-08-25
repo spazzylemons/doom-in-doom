@@ -65,8 +65,6 @@
 
 #include "d_main.h"
 
-#include "doom_icon.c"
-
 //
 // D-DoomLoop()
 // Not a globally visible function,
@@ -1147,7 +1145,6 @@ static void G_CheckDemoStatusAtExit (void)
 void D_DoomMain (void)
 {
     int p;
-    char file[256];
     char demolumpname[9];
 
     // print banner
@@ -1343,6 +1340,22 @@ void D_DoomMain (void)
 
     // Generate the WAD hash table.  Speed things up a bit.
     W_GenerateHashTable();
+
+
+    int i, loaded = 0;
+
+    for (i = 0; i < numlumps; ++i)
+    {
+        if (!strncmp(lumpinfo[i]->name, "DEHACKED", 8))
+        {
+            DEH_LoadLump(i, false, false);
+            loaded++;
+        }
+    }
+
+    if (loaded != 0) {
+        printf("  loaded %i DEHACKED lumps from PWAD files.\n", loaded);
+    }
 
     // Set the gamedescription string. This is only possible now that
     // we've finished loading Dehacked patches.

@@ -90,15 +90,7 @@
 
 #define PACKED_STRUCT(...) PACKEDPREFIX struct __VA_ARGS__ PACKEDATTR
 
-// C99 integer types; with gcc we just use this.  Other compilers
-// should add conditional statements that define the C99 types.
-
-// What is really wanted here is stdint.h; however, some old versions
-// of Solaris don't have stdint.h and only have inttypes.h (the 
-// pre-standardisation version).  inttypes.h is also in the C99 
-// standard and defined to include stdint.h, so include this. 
-
-#include <inttypes.h>
+#include <stdint.h>
 
 #if defined(__cplusplus) || defined(__bool_true_false_are_defined)
 

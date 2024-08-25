@@ -22,7 +22,6 @@
 
 #include <stdio.h>
 #include <stdarg.h>
-#include <sys/stat.h>
 
 #include "doomtype.h"
 

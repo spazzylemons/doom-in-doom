@@ -23,13 +23,6 @@
 
 #include <stdarg.h>
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
-
 #include "config.h"
 
 #include "deh_str.h"
@@ -77,7 +70,7 @@ void I_Tactile(int on, int off, int total)
 
 byte *I_ZoneBase (int *size)
 {
-    static byte zonemem[6 * 1024 * 1024];
+    static byte zonemem[12 * 1024 * 1024];
     *size = sizeof(zonemem);
     return zonemem;
 }
@@ -88,9 +81,9 @@ void I_PrintBanner(const char *msg)
     int spaces = 35 - (strlen(msg) / 2);
 
     for (i=0; i<spaces; ++i)
-        putchar(' ');
+        printf(" ");
 
-    puts(msg);
+    printf("%s\n", msg);
 }
 
 void I_PrintDivider(void)
@@ -99,10 +92,10 @@ void I_PrintDivider(void)
 
     for (i=0; i<75; ++i)
     {
-        putchar('=');
+        printf("=");
     }
 
-    putchar('\n');
+    printf("\n");
 }
 
 void I_PrintStartupBanner(const char *gamedescription)
@@ -172,7 +165,6 @@ void I_Error (const char *error, ...)
     char msgbuf[512];
     va_list argptr;
     atexit_listentry_t *entry;
-    boolean exit_gui_popup;
 
     if (already_quitting)
     {
@@ -212,24 +204,6 @@ void I_Error (const char *error, ...)
     }
 
     exit(-1);
-}
-
-//
-// I_Realloc
-//
-
-void *I_Realloc(void *ptr, size_t size)
-{
-    void *new_ptr;
-
-    new_ptr = realloc(ptr, size);
-
-    if (size != 0 && new_ptr == NULL)
-    {
-        I_Error ("I_Realloc: failed on reallocation of %zu bytes", size);
-    }
-
-    return new_ptr;
 }
 
 //

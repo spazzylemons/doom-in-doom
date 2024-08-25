@@ -71,8 +71,8 @@ int			showMessages = 1;
 	
 
 // Blocky mode, has default, 0 = high, 1 = normal
-int			detailLevel = 0;
-int			screenblocks = 9;
+int			detailLevel = 1;
+int			screenblocks = 6;
 
 // temp for screenblocks (0-9)
 int			screenSize;
@@ -619,14 +619,8 @@ void M_DoSave(int slot)
 //
 void M_SaveSelect(int choice)
 {
-    int x, y;
-
     // we are going to be intercepting all chars
     saveStringEnter = 1;
-
-    // We need to turn on text input:
-    x = LoadDef.x - 11;
-    y = LoadDef.y + choice * LINEHEIGHT - 4;
 
     saveSlot = choice;
     M_StringCopy(saveOldString,savegamestrings[choice], SAVESTRINGSIZE);
@@ -1311,7 +1305,6 @@ boolean M_Responder (event_t* ev)
     static  int     lasty = 0;
     static  int     mousex = 0;
     static  int     lastx = 0;
-    int dir;
 
     // In testcontrols mode, none of the function keys should do anything
     // - the only key is escape to quit.

@@ -44,19 +44,53 @@ FixedMul
 // FixedDiv, C version.
 //
 
-fixed_t FixedDiv(fixed_t a, fixed_t b)
-{
-    if ((abs(a) >> 14) >= abs(b))
-    {
-	return (a^b) < 0 ? INT_MIN : INT_MAX;
-    }
-    else
-    {
-	int64_t result;
+fixed_t FixedDiv(fixed_t a, fixed_t b) {
+	fixed_t result;
+	asm volatile (
+		".insn r 0x73, 0x4, 0x41, %[out], %[a], %[b]"
+		: [out]"=r"(result)
+		: [a]"r"(a), [b]"r"(b)
+	);
+	return result;
+	// int32_t sign = a ^ b;
+	// uint32_t aa, bb;
 
-	result = ((int64_t) a << FRACBITS) / b;
+	// if (a < 0) {
+	// 	aa = -a;
+	// } else {
+	// 	aa = a;
+	// }
 
-	return (fixed_t) result;
-    }
+	// if (b < 0) {
+	// 	bb = -b;
+	// } else {
+	// 	bb = b;
+	// }
+
+	// if ((aa >> 14) >= bb) {
+	// 	return sign < 0 ? INT_MIN : INT_MAX;
+	// }
+
+	// uint32_t bit = FRACUNIT;
+	// while (aa > bb) {
+	// 	bb <<= 1;
+	// 	bit <<= 1;
+	// }
+
+	// uint32_t c = 0;
+
+	// do {
+	// 	if (aa >= bb) {
+	// 		aa -= bb;
+	// 		c |= bit;
+	// 	}
+	// 	aa <<= 1;
+	// 	bit >>= 1;
+	// } while (bit && aa);
+
+	// if (sign < 0)
+	// 	c = -c;
+
+    // return c;
 }
 

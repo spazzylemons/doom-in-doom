@@ -39,12 +39,7 @@ void D_DoomMain (void);
 
 int main(int argc, char **argv)
 {
-    // save arguments
-
-    I_RV_Init();
-
     // start doom
-
     D_DoomMain ();
 
     return 0;

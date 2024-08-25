@@ -73,10 +73,6 @@ int gametic;
 
 static int localplayer;
 
-// Used for original sync code.
-
-static int      skiptics = 0;
-
 // Reduce the bandwidth needed by sampling game input less and transmitting
 // less.  If ticdup is 2, sample half normal, 3 = one third normal, etc.
 
@@ -316,10 +312,6 @@ static int GetLowTic(void)
 
     return lowtic;
 }
-
-static int frameon;
-static int frameskip[4];
-static int oldnettics;
 
 // Returns true if there are players in the game:
 

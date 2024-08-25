@@ -41,5 +41,19 @@ void I_RV_SaveCommit(void);
 
 void I_RV_SaveClose(void);
 
+// SOUND //
+
+void I_RV_SetMusic(const char *name, int looping);
+
+void I_RV_PlaySound(int channel, int id, int vol, int sep);
+
+void I_RV_UpdateSound(int channel, int vol, int sep);
+
+void I_RV_StopSound(int channel);
+
+int I_RV_SoundIsPlaying(int channel);
+
+// MISC //
+
 _Noreturn void I_RV_Quit(void);
 

@@ -22,9 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
 #include <assert.h>
-#include <locale.h>
 
 #include "config.h"
 
@@ -56,7 +54,6 @@ typedef enum
     DEFAULT_INT,
     DEFAULT_INT_HEX,
     DEFAULT_STRING,
-    DEFAULT_FLOAT,
     DEFAULT_KEY,
 } default_type_t;
 
@@ -69,7 +66,6 @@ typedef struct
     union {
         int *i;
         char **s;
-        float *f;
     } location;
 
     // Type of the variable
@@ -106,8 +102,6 @@ typedef struct
     CONFIG_VARIABLE_GENERIC(name, DEFAULT_INT)
 #define CONFIG_VARIABLE_INT_HEX(name) \
     CONFIG_VARIABLE_GENERIC(name, DEFAULT_INT_HEX)
-#define CONFIG_VARIABLE_FLOAT(name) \
-    CONFIG_VARIABLE_GENERIC(name, DEFAULT_FLOAT)
 #define CONFIG_VARIABLE_STRING(name) \
     CONFIG_VARIABLE_GENERIC(name, DEFAULT_STRING)
 
@@ -902,18 +896,6 @@ static default_t extra_defaults_list[] =
     CONFIG_VARIABLE_INT(use_libsamplerate),
 
     //!
-    // Scaling factor used by libsamplerate. This is used when converting
-    // sounds internally back into integer form; normally it should not
-    // be necessary to change it from the default value. The only time
-    // it might be needed is if a PWAD file is loaded that contains very
-    // loud sounds, in which case the conversion may cause sound clipping
-    // and the scale factor should be reduced. The lower the value, the
-    // quieter the sound effects become, so it should be set as high as is
-    // possible without clipping occurring.
-
-    CONFIG_VARIABLE_FLOAT(libsamplerate_scale),
-
-    //!
     // Full path to a directory in which WAD files and dehacked patches
     // can be placed to be automatically loaded on startup. A subdirectory
     // of this directory matching the IWAD name is checked to find the
@@ -939,32 +921,11 @@ static default_t extra_defaults_list[] =
     CONFIG_VARIABLE_INT(fsynth_chorus_active),
 
     //!
-    // Specifies the modulation depth of the FluidSynth chorus. Default is
-    // 5.0, range is 0.0 to 256.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_chorus_depth),
-
-    //!
-    // Specifies the output amplitude of the FluidSynth chorus signal. Default
-    // is 0.35, range is 0.0 to 10.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_chorus_level),
-
-    //!
     // Sets the voice count of the FluidSynth chorus signal. Default is 3,
     // range is 0 to 99.
     //
 
     CONFIG_VARIABLE_INT(fsynth_chorus_nr),
-
-    //!
-    // Sets the FluidSynth chorus modulation speed in Hz. Default is 0.3,
-    // range is 0.1 to 5.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_chorus_speed),
 
     //!
     // This setting defines how FluidSynth interprets Bank Select messages. The
@@ -986,41 +947,6 @@ static default_t extra_defaults_list[] =
     //
 
     CONFIG_VARIABLE_INT(fsynth_reverb_active),
-
-    //!
-    // Sets the amount of FluidSynth reverb damping. Default is 0.4, range is
-    // 0.0 to 1.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_reverb_damp),
-
-    //!
-    // Sets the FluidSynth reverb amplitude. Default is 0.15, range is 0.0 -
-    // 1.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_reverb_level),
-
-    //!
-    // Sets the room size(i.e. amount of wet) FluidSynth reverb. Default is
-    // 0.6, range is 0.0 - 1.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_reverb_roomsize),
-
-    //!
-    // Sets the stereo spread of the FluidSynth reverb signal. Default is
-    // 0.4, range is 0.0 - 100.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_reverb_width),
-
-    //!
-    // Fine tune the FluidSynth output level. Default is 1.0,
-    // range is 0.0 - 10.0.
-    //
-
-    CONFIG_VARIABLE_FLOAT(fsynth_gain),
 
     //!
     // Full path to a soundfont file to use with FluidSynth MIDI playback.
@@ -1132,14 +1058,6 @@ static default_t extra_defaults_list[] =
     //
 
     CONFIG_VARIABLE_INT(novert),
-
-    //!
-    // Mouse acceleration factor.  When the speed of mouse movement
-    // exceeds the threshold value (mouse_threshold), the speed is
-    // multiplied by this value.
-    //
-
-    CONFIG_VARIABLE_FLOAT(mouse_acceleration),
 
     //!
     // Mouse acceleration threshold.  When the speed of mouse movement
@@ -2079,36 +1997,6 @@ static default_t *SearchCollection(default_collection_t *collection, const char 
     return NULL;
 }
 
-// Mapping from DOS keyboard scan code to internal key code (as defined
-// in doomkey.h). I think I (fraggle) reused this from somewhere else
-// but I can't find where. Anyway, notes:
-//  * KEY_PAUSE is wrong - it's in the KEY_NUMLOCK spot. This shouldn't
-//    matter in terms of Vanilla compatibility because neither of
-//    those were valid for key bindings.
-//  * There is no proper scan code for PrintScreen (on DOS machines it
-//    sends an interrupt). So I added a fake scan code of 126 for it.
-//    The presence of this is important so we can bind PrintScreen as
-//    a screenshot key.
-static const int scantokey[128] =
-{
-    0  ,    27,     '1',    '2',    '3',    '4',    '5',    '6',
-    '7',    '8',    '9',    '0',    '-',    '=',    KEY_BACKSPACE, 9,
-    'q',    'w',    'e',    'r',    't',    'y',    'u',    'i',
-    'o',    'p',    '[',    ']',    13,		KEY_RCTRL, 'a',    's',
-    'd',    'f',    'g',    'h',    'j',    'k',    'l',    ';',
-    '\'',   '`',    KEY_RSHIFT,'\\',   'z',    'x',    'c',    'v',
-    'b',    'n',    'm',    ',',    '.',    '/',    KEY_RSHIFT,KEYP_MULTIPLY,
-    KEY_RALT,  ' ',  KEY_CAPSLOCK,KEY_F1,  KEY_F2,   KEY_F3,   KEY_F4,   KEY_F5,
-    KEY_F6,   KEY_F7,   KEY_F8,   KEY_F9,   KEY_F10,  /*KEY_NUMLOCK?*/KEY_PAUSE,KEY_SCRLCK,KEY_HOME,
-    KEY_UPARROW,KEY_PGUP,KEY_MINUS,KEY_LEFTARROW,KEYP_5,KEY_RIGHTARROW,KEYP_PLUS,KEY_END,
-    KEY_DOWNARROW,KEY_PGDN,KEY_INS,KEY_DEL,0,   0,      0,      KEY_F11,
-    KEY_F12,  0,      0,      0,      0,      0,      0,      0,
-    0,      0,      0,      0,      0,      0,      0,      0,
-    0,      0,      0,      0,      0,      0,      0,      0,
-    0,      0,      0,      0,      0,      0,      0,      0,
-    0,      0,      0,      0,      0,      0,      KEY_PRTSCR, 0
-};
-
 // Set the default filenames to use for configuration files.
 
 void M_SetConfigFilenames(const char *main_config, const char *extra_config)
@@ -2131,8 +2019,6 @@ void M_SaveDefaults (void)
 
 void M_LoadDefaults (void)
 {
-    int i;
-
     // This variable is a special snowflake for no good reason.
     M_BindStringVariable("autoload_path", &autoload_path);
 }
@@ -2179,17 +2065,6 @@ void M_BindIntVariable(const char *name, int *location)
     variable->bound = true;
 }
 
-void M_BindFloatVariable(const char *name, float *location)
-{
-    default_t *variable;
-
-    variable = GetDefaultForName(name);
-    assert(variable->type == DEFAULT_FLOAT);
-
-    variable->location.f = location;
-    variable->bound = true;
-}
-
 void M_BindStringVariable(const char *name, char **location)
 {
     default_t *variable;
@@ -2231,19 +2106,4 @@ const char *M_GetStringVariable(const char *name)
     }
 
     return *variable->location.s;
-}
-
-float M_GetFloatVariable(const char *name)
-{
-    default_t *variable;
-
-    variable = GetDefaultForName(name);
-
-    if (variable == NULL || !variable->bound
-     || variable->type != DEFAULT_FLOAT)
-    {
-        return 0;
-    }
-
-    return *variable->location.f;
 }

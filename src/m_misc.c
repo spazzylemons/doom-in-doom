@@ -22,18 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <errno.h>
-
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <io.h>
-#ifdef _MSC_VER
-#include <direct.h>
-#endif
-#else
-#include <sys/types.h>
-#endif
 
 #include "doomtype.h"
 
@@ -134,14 +122,10 @@ const char *M_StrCaseStr(const char *haystack, const char *needle)
 char *M_StringDuplicate(const char *orig)
 {
     char *result;
+    size_t len = strlen(orig) + 1;
 
-    result = strdup(orig);
-
-    if (result == NULL)
-    {
-        I_Error("Failed to duplicate string (length %zu)\n",
-                strlen(orig));
-    }
+    result = Z_Malloc(len, PU_STATIC, NULL);
+    memcpy(result, orig, len);
 
     return result;
 }

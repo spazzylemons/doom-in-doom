@@ -1,6 +1,7 @@
-CC := gcc
-CFLAGS := -I/usr/include/SDL2 -g
-LDFLAGS := -lSDL2 -lSDL2_mixer -lsamplerate
+CC := riscv32-unknown-elf-gcc
+AS := riscv32-unknown-elf-as
+CFLAGS := -march=rv32im -fsigned-char -mabi=ilp32 -g -O3 -nostdinc -Ilibc/include -Wall -Wno-format
+LDFLAGS := -nostdlib -flto
 
 O := build
 
@@ -29,7 +30,6 @@ OBJS := \
     $(O)/d_mode.o \
     $(O)/d_net.o \
     $(O)/doomdef.o \
-    $(O)/doom_icon.o \
     $(O)/doomstat.o \
     $(O)/dstrings.o \
     $(O)/f_finale.o \
@@ -91,15 +91,30 @@ OBJS := \
     $(O)/wi_stuff.o \
     $(O)/w_wad.o \
     $(O)/z_zone.o \
+    $(O)/ctype.o \
+    $(O)/printf.o \
+    $(O)/stdio.o \
+    $(O)/stdlib.o \
+    $(O)/string.o \
+    $(O)/crt0.o \
 
 all: doom
 
 clean:
 	rm -f $(O)/*
 
-doom: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@ $(LIBS)
+doom: doom.elf
+	riscv32-unknown-elf-objcopy $^ -O binary $@
 
-$(O)/%.o: src/%.c $(wildcard src/*.h)
-	$(CC) $(CFLAGS) -c $< -o $@
+doom.elf: $(OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@ -Wl,-Tlink.ld
+
+$(O)/%.o: src/%.c $(wildcard src/*.h) $(wildcard libc/include/*.h)
+	$(CC) $(CFLAGS) -flto -c $< -o $@
+
+$(O)/%.o: src/%.S
+	$(AS) -march=rv32im -mabi=ilp32 -c $< -o $@
+
+$(O)/%.o: libc/src/%.c $(wildcard src/*.h) $(wildcard libc/include/*.h)
+	$(CC) $(CFLAGS) -ffreestanding -c $< -o $@
 

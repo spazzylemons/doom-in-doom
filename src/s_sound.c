@@ -69,9 +69,6 @@ typedef struct
     // origin of sound
     mobj_t *origin;
 
-    // handle of the sound being played
-    int handle;
-
     int pitch;
 
 } channel_t;
@@ -137,7 +134,7 @@ void S_Init(int sfxVolume, int musicVolume)
     // Note that sounds have not been cached (yet).
     for (i=1 ; i<NUMSFX ; i++)
     {
-        S_sfx[i].lumpnum = S_sfx[i].usefulness = -1;
+        S_sfx[i].usefulness = -1;
     }
 
     // Doom defaults to pitch-shifting off.
@@ -166,10 +163,7 @@ static void S_StopChannel(int cnum)
     {
         // stop the sound playing
 
-        if (I_SoundIsPlaying(c->handle))
-        {
-            I_StopSound(c->handle);
-        }
+        I_StopSound(cnum);
 
         // check to see if other channels are playing the sound
 
@@ -503,13 +497,8 @@ void S_StartSound(void *origin_p, int sfx_id)
         sfx->usefulness = 1;
     }
 
-    if (sfx->lumpnum < 0)
-    {
-        sfx->lumpnum = I_GetSfxLumpNum(sfx);
-    }
-
     channels[cnum].pitch = pitch;
-    channels[cnum].handle = I_StartSound(sfx, cnum, volume, sep, channels[cnum].pitch);
+    I_StartSound(sfx, cnum, volume, sep, channels[cnum].pitch);
 }
 
 //
@@ -556,7 +545,7 @@ void S_UpdateSounds(mobj_t *listener)
 
         if (c->sfxinfo)
         {
-            if (I_SoundIsPlaying(c->handle))
+            if (I_SoundIsPlaying(cnum))
             {
                 // initialize parameters
                 volume = snd_SfxVolume;
@@ -591,7 +580,7 @@ void S_UpdateSounds(mobj_t *listener)
                     }
                     else
                     {
-                        I_UpdateSoundParams(c->handle, volume, sep);
+                        I_UpdateSoundParams(cnum, volume, sep);
                     }
                 }
             }
@@ -638,8 +627,6 @@ void S_StartMusic(int m_id)
 void S_ChangeMusic(int musicnum, int looping)
 {
     musicinfo_t *music = NULL;
-    char namebuf[9];
-    void *handle;
 
     // The Doom IWAD file has two versions of the intro music: d_intro
     // and d_introa.  The latter is used for OPL playback.
@@ -668,25 +655,9 @@ void S_ChangeMusic(int musicnum, int looping)
     // shutdown old music
     S_StopMusic();
 
-    // get lumpnum if neccessary
-    if (!music->lumpnum)
-    {
-        M_snprintf(namebuf, sizeof(namebuf), "d_%s", DEH_String(music->name));
-        music->lumpnum = W_GetNumForName(namebuf);
-    }
-
-    music->data = W_CacheLumpNum(music->lumpnum, PU_STATIC);
-
-    handle = I_RegisterSong(music->data, W_LumpLength(music->lumpnum));
-    music->handle = handle;
-    I_PlaySong(handle, looping);
+    I_PlaySong(music->name, looping);
 
     mus_playing = music;
-}
-
-boolean S_MusicPlaying(void)
-{
-    return I_MusicIsPlaying();
 }
 
 void S_StopMusic(void)
@@ -699,9 +670,6 @@ void S_StopMusic(void)
         }
 
         I_StopSong();
-        I_UnRegisterSong(mus_playing->handle);
-        W_ReleaseLumpNum(mus_playing->lumpnum);
-        mus_playing->data = NULL;
         mus_playing = NULL;
     }
 }
