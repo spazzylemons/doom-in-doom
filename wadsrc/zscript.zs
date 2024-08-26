@@ -1,6 +1,7 @@
 version "4.12.2"
 
 #include "DoomInDoom/d_event.zs"
+#include "DoomInDoom/m_fixed.zs"
 #include "DoomInDoom/doomkeys.zs"
 #include "DoomInDoom/sounds.zs"
 
@@ -567,50 +568,13 @@ class RV32Doom : Actor {
                                 ThrowAbortException("Unhandled ECALL");
                         }
                     } else if (op == 4 && funct7 == 0x41) {
-                        // assume MOP.R.R.0
-                        // This is dedicated to FixedDiv for speeding up
-                        // fixed-point division.
                         int a = regs[(ir >> 15) & 0x1f];
                         int b = regs[(ir >> 20) & 0x1f];
-
-                        int sign = a ^ b;
-                        uint aa, bb;
-
-                        if (a < 0) {
-                            aa = -a;
-                        } else {
-                            aa = a;
-                        }
-
-                        if (b < 0) {
-                            bb = -b;
-                        } else {
-                            bb = b;
-                        }
-
-                        if ((aa >> 14) >= bb) {
-                            rval = sign < 0 ? 0x80000000 : 0x7fffffff;
-                        } else {
-                            uint bit = 0x10000;
-                            while (aa > bb) {
-                                bb <<= 1;
-                                bit <<= 1;
-                            }
-
-                            rval = 0;
-
-                            do {
-                                if (aa >= bb) {
-                                    aa -= bb;
-                                    rval |= bit;
-                                }
-                                aa <<= 1;
-                                bit >>= 1;
-                            } while (bit && aa);
-
-                            if (sign < 0)
-                                rval = -rval;
-                        }
+                        rval = Fixed.Div(a, b);
+                    } else if (op == 4 && funct7 == 0x43) {
+                        int a = regs[(ir >> 15) & 0x1f];
+                        int b = regs[(ir >> 20) & 0x1f];
+                        rval = Fixed.Mul(a, b);
                     } else {
                         ThrowAbortException("Illegal instruction");
                     }
