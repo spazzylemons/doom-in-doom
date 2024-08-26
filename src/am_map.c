@@ -601,26 +601,6 @@ AM_Responder
 
     rc = false;
 
-    if (ev->type == ev_joystick && joybautomap >= 0
-        && (ev->data1 & (1 << joybautomap)) != 0)
-    {
-        joywait = I_GetTime() + 5;
-
-        if (!automapactive)
-        {
-            AM_Start ();
-            viewactive = false;
-        }
-        else
-        {
-            bigstate = 0;
-            viewactive = true;
-            AM_Stop ();
-        }
-
-        return true;
-    }
-
     if (!automapactive)
     {
 	if (ev->type == ev_keydown && ev->data1 == key_map_toggle)

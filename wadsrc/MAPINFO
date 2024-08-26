@@ -1,0 +1,17 @@
+gameinfo {
+    AddEventHandlers = "InputListener"
+}
+
+clearepisodes
+episode DTHEATER {
+    name = "Doom in Doom"
+}
+
+map DTHEATER "Doom Theater" {
+    levelnum = 1
+    cluster = 1
+}
+
+doomednums {
+	3991 = "RV32Doom"
+}

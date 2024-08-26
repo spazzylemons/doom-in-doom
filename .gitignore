@@ -1,6 +1,7 @@
 build/
-doom
-doom.elf
+*.elf
 *.cfg
-*.wad
+*.wad.bak
 *.dsg
+
+wadsrc/DoomInDoom/DOOM_EXE

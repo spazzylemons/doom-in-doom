@@ -699,8 +699,7 @@ boolean G_Responder (event_t* ev)
 	) 
     { 
 	if (ev->type == ev_keydown ||  
-	    (ev->type == ev_mouse && ev->data1) || 
-	    (ev->type == ev_joystick && ev->data1) ) 
+	    (ev->type == ev_mouse && ev->data1) ) 
 	{ 
 	    M_StartControlPanel (); 
 	    joywait = I_GetTime() + 5;
@@ -777,9 +776,6 @@ boolean G_Responder (event_t* ev)
         SetMouseButtons(ev->data1);
 	mousex = ev->data2*(mouseSensitivity+5)/10; 
 	mousey = ev->data3*(mouseSensitivity+5)/10; 
-	return true;    // eat events 
- 
-      case ev_joystick: 
 	return true;    // eat events 
  
       default: 

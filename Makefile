@@ -5,6 +5,9 @@ LDFLAGS := -nostdlib -flto
 
 O := build
 
+ELF_FILE := doom.elf
+TARGET := wadsrc/DoomInDoom/DOOM_EXE
+
 OBJS := \
     $(O)/i_rvsys.o \
     $(O)/am_map.o \
@@ -98,15 +101,17 @@ OBJS := \
     $(O)/string.o \
     $(O)/crt0.o \
 
-all: doom
+all: $(TARGET)
 
 clean:
 	rm -f $(O)/*
+	rm -f $(TARGET)
+	rm -f $(ELF_FILE)
 
-doom: doom.elf
+$(TARGET): $(ELF_FILE)
 	riscv32-unknown-elf-objcopy $^ -O binary $@
 
-doom.elf: $(OBJS)
+$(ELF_FILE): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@ -Wl,-Tlink.ld
 
 $(O)/%.o: src/%.c $(wildcard src/*.h) $(wildcard libc/include/*.h)
