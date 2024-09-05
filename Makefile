@@ -9,7 +9,6 @@ ELF_FILE := doom.elf
 TARGET := wadsrc/DoomInDoom/DOOM_EXE
 
 OBJS := \
-    $(O)/i_rvsys.o \
     $(O)/am_map.o \
     $(O)/deh_ammo.o \
     $(O)/deh_bexstr.o \
@@ -52,7 +51,6 @@ OBJS := \
     $(O)/m_config.o \
     $(O)/m_controls.o \
     $(O)/memio.o \
-    $(O)/m_fixed.o \
     $(O)/m_menu.o \
     $(O)/m_misc.o \
     $(O)/m_random.o \

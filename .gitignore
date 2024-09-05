@@ -1,3 +1,4 @@
+compiler/build/
 build/
 *.elf
 *.cfg
