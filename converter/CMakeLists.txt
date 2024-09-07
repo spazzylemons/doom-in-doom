@@ -14,7 +14,7 @@ macro(llvm_set var flag)
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
     if(result_code)
-        error("Failed to execute ${LLVM_CONFIG}")
+        message(FATAL_ERROR "Failed to execute ${LLVM_CONFIG}")
     endif()
 endmacro()
 
@@ -26,7 +26,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS}")
 
 add_executable(${TARGET}
-    src/main.cpp)
+    src/main.cpp
+    src/compiler.cpp
+    src/memory.cpp)
 
 target_link_libraries(${TARGET} ${LLVM_LIBS})
 
