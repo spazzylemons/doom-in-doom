@@ -26,8 +26,9 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${LLVM_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS}")
 
 add_executable(${TARGET}
-    src/main.cpp
     src/compiler.cpp
+    src/function.cpp
+    src/main.cpp
     src/memory.cpp)
 
 target_link_libraries(${TARGET} ${LLVM_LIBS})

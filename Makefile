@@ -2,7 +2,17 @@ CC := clang
 AS := llvm-as
 LD := llvm-link
 
-CFLAGS := --target=i386-unknown -g -O3 -nostdinc -Ilibc/include -Wall -Wno-format -S -emit-llvm
+CFLAGS := --target=i386-unknown \
+	-O3 \
+	-nostdinc \
+	-fno-vectorize \
+	-fno-slp-vectorize \
+	-mllvm --instcombine-code-sinking=0 \
+	-Ilibc/include \
+	-Wall \
+	-S \
+	-emit-llvm \
+
 LDFLAGS := -nostdlib
 
 O := build

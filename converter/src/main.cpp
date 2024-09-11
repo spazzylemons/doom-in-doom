@@ -28,8 +28,9 @@ int main(int argc, char *argv[]) {
     }
     auto module = tryModule->get();
 
-    Compiler compiler(argv[2]);
-    compiler.compile(module);
+    Compiler compiler(module, argv[2]);
+    compiler.compile();
+    compiler.write();
 
     return EXIT_SUCCESS;
 }

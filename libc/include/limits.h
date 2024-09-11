@@ -1,5 +1,5 @@
 #ifndef _LIMITS_H_
-#define _LIMITS_H
+#define _LIMITS_H_
 
 #define INT_MAX 2147483647
 #define INT_MIN (-2147483648)

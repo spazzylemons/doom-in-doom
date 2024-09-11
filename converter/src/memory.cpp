@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <llvm/IR/DerivedTypes.h>
 #include <ostream>
 
 #include <llvm/IR/Constants.h>
@@ -6,6 +8,15 @@
 #include <llvm/IR/Instructions.h>
 
 #include "memory.hpp"
+
+std::string FuncPtrType::mapName() const {
+    return std::string("fp") + (hasReturnValue ? "i" : "v") + std::to_string(numParams) + (isVarArg ? "v" : "");
+}
+
+FuncPtrType::FuncPtrType(const llvm::FunctionType *f)
+    : hasReturnValue(f->getReturnType()->isSized())
+    , isVarArg(f->isVarArg())
+    , numParams(f->getNumParams()) {}
 
 // Start storing data at address 4, so nothing is stored at NULL.
 static constexpr uint32_t MEMORY_INITIAL_OFFSET = 4;
@@ -79,7 +90,7 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
     } else {
         fprintf(stderr, "Constant type unsupported: ");
         c->print(llvm::errs());
-        fprintf(stderr, "\n");
+        llvm::errs() << "\n";
 
         exit(EXIT_FAILURE);
     }
@@ -89,6 +100,31 @@ void Section::registerGlobal(const llvm::GlobalVariable& global, const llvm::Dat
     auto& var = variables[global.getName().str()];
     var = address;
     address += bitSizeToByteSize(layout.getTypeSizeInBits(global.getInitializer()->getType()).getFixedValue());
+}
+
+void GlobalMemory::registerFunction(const llvm::Function *f) {
+    FuncPtrType fp(f->getFunctionType());
+    auto& list = functionPtrMaps[fp];
+    list[f->getName().str()] = funcPtrIndex++;
+}
+
+bool FuncPtrType::operator<(const FuncPtrType &other) const {
+    if (hasReturnValue < other.hasReturnValue) {
+        return true;
+    } else if (hasReturnValue > other.hasReturnValue) {
+        return false;
+    }
+
+    if (isVarArg < other.isVarArg) {
+        return true;
+    } else if (isVarArg > other.isVarArg) {
+        return false;
+    }
+
+    if (numParams < other.numParams) {
+        return true;
+    }
+    return false;
 }
 
 void GlobalMemory::registerGlobal(const llvm::GlobalVariable& global, const llvm::DataLayout &layout) {
@@ -113,7 +149,7 @@ void GlobalMemory::initializeGlobal(const llvm::GlobalVariable& global, const ll
     writeConstant(offset, init, layout);
 }
 
-bool Section::getAddress(const std::string& name, uint32_t& out) {
+bool Section::getAddress(const std::string& name, uint32_t& out) const {
     auto it = variables.find(name);
     if (it == variables.end()) {
         return false;
@@ -138,7 +174,7 @@ void GlobalMemory::writeInt(uint32_t addr, uint32_t value, uint8_t byteSize) {
     }
 }
 
-uint32_t GlobalMemory::getAddress(const std::string& name) {
+uint32_t GlobalMemory::getAddress(const std::string& name) const {
     uint32_t result;
     if (data.getAddress(name, result)) {
         return result + MEMORY_INITIAL_OFFSET;
@@ -158,4 +194,47 @@ void GlobalMemory::allocateMemory() {
 
 void GlobalMemory::saveMemory(std::ostream& out) {
     out.write(reinterpret_cast<const char *>(memory.get()), size);
+}
+
+void GlobalMemory::writeFunctionMaps(std::ostream& out) {
+    for (const auto& [fp, _] : functionPtrMaps) {
+        out << "Map<uint,function<play ";
+        if (fp.hasReturnValue) {
+            out << "uint";
+        } else {
+            out << "void";
+        }
+        out << "(DoomInDoom";
+        for (auto i = 0U; i < fp.numParams; i++) {
+            out << ",uint";
+        }
+        if (fp.isVarArg) {
+            out << ",VAList";
+        }
+        out << ")> >";
+        out << fp.mapName();
+        out << ";\n";
+    }
+
+    out << "void loadFuncPtrs(){\n";
+    for (const auto& [fp, m] : functionPtrMaps) {
+        auto name = fp.mapName();
+        for (const auto& [c, idx] : m) {
+            out << name << ".Insert(" << idx << ",func_" << c << ");\n";
+        }
+    }
+    out << "}\n";
+}
+
+std::string GlobalMemory::getFuncPtr(const llvm::FunctionType *f, std::string idx) const {
+    FuncPtrType fp(f);
+    auto& list = functionPtrMaps.at(fp);
+
+    return fp.mapName() + ".Get(" + idx + ").Call";
+}
+
+uint32_t GlobalMemory::getFuncIndex(const llvm::Function *f) const {
+    FuncPtrType fp(f->getFunctionType());
+    auto& list = functionPtrMaps.at(fp);
+    return list.at(f->getName().str());
 }
