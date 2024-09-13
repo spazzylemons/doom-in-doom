@@ -45,9 +45,6 @@ typedef struct
 // Register callback functions for the main loop code to use.
 void D_RegisterLoopCallbacks(loop_interface_t *i);
 
-// Create any new ticcmds and broadcast to other players.
-void NetUpdate (void);
-
 //? how many ticks to run?
 void TryRunTics (void);
 

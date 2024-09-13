@@ -26,8 +26,5 @@
 // returns current time in tics.
 int I_GetTime (void);
 
-// Wait for vertical retrace or pause a bit.
-void I_WaitVBL(int count);
-
 #endif
 

@@ -44,9 +44,6 @@
 
 #define BACKUPTICS 128
 
-#define net_client_connected 0
-#define drone 0
-
 // net_addr_t
 
 // Game settings sent by client to server when initiating game start,

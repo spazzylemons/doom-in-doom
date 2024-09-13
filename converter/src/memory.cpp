@@ -58,8 +58,7 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
     } else if (auto v = llvm::dyn_cast<llvm::ConstantPointerNull>(c)) {
         writePtr(offset, 0);
     } else if (auto v = llvm::dyn_cast<llvm::Function>(c)) {
-        // TODO give functions addresses.
-        writePtr(offset, 0);
+        writePtr(offset, getFuncIndex(v));
     } else if (auto v = llvm::dyn_cast<llvm::ConstantDataArray>(c)) {
         auto arrayType = v->getType();
         auto arrayStride = getTypeSize(arrayType->getArrayElementType(), layout);

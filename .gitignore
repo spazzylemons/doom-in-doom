@@ -5,4 +5,5 @@ build/
 *.wad.bak
 *.dsg
 
-wadsrc/DoomInDoom/DOOM_EXE
+wadsrc/DoomInDoom/code.zs
+wadsrc/DoomInDoom/data.bin

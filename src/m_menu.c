@@ -1048,7 +1048,6 @@ void M_QuitResponse(int key)
 	    S_StartSound(NULL,quitsounds2[(gametic>>2)&7]);
 	else
 	    S_StartSound(NULL,quitsounds[(gametic>>2)&7]);
-	I_WaitVBL(105);
     }
     I_Quit ();
 }

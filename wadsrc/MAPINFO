@@ -13,5 +13,5 @@ map DTHEATER "Doom Theater" {
 }
 
 doomednums {
-	3991 = "RV32Doom"
+	3991 = "DoomInDoom"
 }

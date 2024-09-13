@@ -116,19 +116,12 @@ static boolean BuildNewTic(void)
 
     loop_interface->RunMenu();
 
-    if (drone)
-    {
-        // In drone mode, do not generate any ticcmds.
-
-        return false;
-    }
-
     if (new_sync)
     {
        // If playing single player, do not allow tics to buffer
        // up very far
 
-       if (!net_client_connected && maketic - gameticdiv > 2)
+       if (maketic - gameticdiv > 2)
            return false;
 
        // Never go more than ~200ms ahead
@@ -154,19 +147,8 @@ static boolean BuildNewTic(void)
     return true;
 }
 
-void NetUpdate (void)
-{
-}
-
 static void D_Disconnected(void)
 {
-    // In drone mode, the game cannot continue once disconnected.
-
-    if (drone)
-    {
-        I_Error("Disconnected from server in drone mode.");
-    }
-
     // disconnected from server
 
     printf("Disconnected from server.\n");
@@ -191,7 +173,7 @@ void D_ReceiveTic(ticcmd_t *ticcmds, boolean *players_mask)
 
     for (i = 0; i < NET_MAXPLAYERS; ++i)
     {
-        if (!drone && i == localplayer)
+        if (i == localplayer)
         {
             // This is us.  Don't overwrite it.
         }
@@ -264,11 +246,6 @@ void D_StartNetGame(net_gamesettings_t *settings)
     else
         settings->ticdup = 1;
 
-    if (drone)
-    {
-        settings->consoleplayer = 0;
-    }
-
     // Set the local player and playeringame[] values.
 
     localplayer = settings->consoleplayer;
@@ -293,53 +270,6 @@ void D_StartNetGame(net_gamesettings_t *settings)
     //{
     //    printf("Syncing netgames like Vanilla Doom.\n");
     //}
-}
-
-
-static int GetLowTic(void)
-{
-    int lowtic;
-
-    lowtic = maketic;
-
-    if (net_client_connected)
-    {
-        if (drone || recvtic < lowtic)
-        {
-            lowtic = recvtic;
-        }
-    }
-
-    return lowtic;
-}
-
-// Returns true if there are players in the game:
-
-static boolean PlayersInGame(void)
-{
-    boolean result = false;
-    unsigned int i;
-
-    // If we are connected to a server, check if there are any players
-    // in the game.
-
-    if (net_client_connected)
-    {
-        for (i = 0; i < NET_MAXPLAYERS; ++i)
-        {
-            result = result || local_playeringame[i];
-        }
-    }
-
-    // Whether single or multi-player, unless we are running as a drone,
-    // we are in the game.
-
-    if (!drone)
-    {
-        result = true;
-    }
-
-    return result;
 }
 
 // When using ticdup, certain values must be cleared out when running
@@ -398,7 +328,7 @@ void TryRunTics (void)
 
     BuildNewTic();
 
-    lowtic = GetLowTic();
+    lowtic = maketic;
 
     availabletics = lowtic - gametic/ticdup;
 
@@ -426,11 +356,9 @@ void TryRunTics (void)
 	counts = 1;
 
     // wait for new tics if needed
-    while (!PlayersInGame() || lowtic < gametic/ticdup + counts)
+    while (lowtic < gametic/ticdup + counts)
     {
-	NetUpdate ();
-
-        lowtic = GetLowTic();
+        lowtic = maketic;
 
 	if (lowtic < gametic/ticdup)
 	    I_Error ("TryRunTics: lowtic < gametic");
@@ -438,15 +366,8 @@ void TryRunTics (void)
         // Still no tics to run? Sleep until some are available.
         if (lowtic < gametic/ticdup + counts)
         {
-            // If we're in a netgame, we might spin forever waiting for
-            // new network data to be received. So don't stay in here
-            // forever - give the menu a chance to work.
-            if (I_GetTime() / ticdup - entertic >= MAX_NETGAME_STALL_TICS)
-            {
-                return;
-            }
-
             I_EndFrame();
+            return;
         }
     }
 
@@ -455,17 +376,9 @@ void TryRunTics (void)
     {
         ticcmd_set_t *set;
 
-        if (!PlayersInGame())
-        {
-            return;
-        }
-
         set = &ticdata[(gametic / ticdup) % BACKUPTICS];
 
-        if (!net_client_connected)
-        {
-            SinglePlayerClear(set);
-        }
+        SinglePlayerClear(set);
 
 	for (i=0 ; i<ticdup ; i++)
 	{
@@ -481,9 +394,9 @@ void TryRunTics (void)
 
             TicdupSquash(set);
 	}
-
-	NetUpdate ();	// check for new console commands
     }
+
+    I_EndFrame();
 }
 
 void D_RegisterLoopCallbacks(loop_interface_t *i)

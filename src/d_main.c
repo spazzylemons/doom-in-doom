@@ -256,7 +256,6 @@ boolean D_Display (void)
 
     // menus go directly to the screen
     M_Drawer ();          // menu is drawn even on top of everything
-    NetUpdate ();         // send out any new accumulation
 
     return wipe;
 }
@@ -354,11 +353,6 @@ void D_BindVariables(void)
 
 boolean D_GrabMouseCallback(void)
 {
-    // Drone players don't need mouse focus
-
-    if (drone)
-        return false;
-
     // when menu is active or game is paused, release the mouse 
  
     if (menuactive || paused)
@@ -439,11 +433,6 @@ void D_DoomLoop (void)
     if (testcontrols)
     {
         wipegamestate = gamestate;
-    }
-
-    while (1)
-    {
-        D_RunFrame();
     }
 }
 
@@ -1546,14 +1535,16 @@ void D_DoomMain (void)
     {
 	singledemo = true;              // quit after one demo
 	G_DeferedPlayDemo (demolumpname);
-	D_DoomLoop ();  // never returns
+	D_DoomLoop ();
+    return;
     }
 	
     p = M_CheckParmWithArgs("-timedemo", 1);
     if (p)
     {
 	G_TimeDemo (demolumpname);
-	D_DoomLoop ();  // never returns
+    D_DoomLoop ();
+    return;
     }
 	
     if (gameaction != ga_loadgame )
@@ -1564,6 +1555,6 @@ void D_DoomMain (void)
 	    D_StartTitle ();                // start up intro loop
     }
 
-    D_DoomLoop ();  // never returns
+    D_DoomLoop ();
 }
 

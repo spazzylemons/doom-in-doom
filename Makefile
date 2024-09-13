@@ -2,12 +2,13 @@ CC := clang
 AS := llvm-as
 LD := llvm-link
 
+SHELL=/bin/bash -eou pipefail
+
 CFLAGS := --target=i386-unknown \
-	-O3 \
+	-Os \
 	-nostdinc \
 	-fno-vectorize \
 	-fno-slp-vectorize \
-	-mllvm --instcombine-code-sinking=0 \
 	-Ilibc/include \
 	-Wall \
 	-S \
@@ -17,7 +18,10 @@ LDFLAGS := -nostdlib
 
 O := build
 
-ELF_FILE := doom.elf
+TARGETDIR := wadsrc/DoomInDoom
+
+TARGET := $(TARGETDIR)/code.zs
+
 BITCODE := $(O)/doom.bc
 
 OBJS := \
@@ -51,7 +55,6 @@ OBJS := \
     $(O)/g_game.bc \
     $(O)/hu_lib.bc \
     $(O)/hu_stuff.bc \
-    $(O)/i_main.bc \
     $(O)/info.bc \
     $(O)/i_sound.bc \
     $(O)/i_system.bc \
@@ -110,7 +113,11 @@ OBJS := \
     $(O)/stdlib.bc \
     $(O)/string.bc \
 
-all: $(BITCODE)
+CONVERTER := converter/build/converter
+
+.PHONY: all clean
+
+all: $(TARGET)
 
 $(O):
 	mkdir -p $(O)
@@ -118,16 +125,21 @@ $(O):
 clean:
 	rm -rf $(O)
 	rm -f $(BITCODE)
+	rm -f $(TARGETDIR)/code.zs
+	rm -f $(TARGETDIR)/data.bin
+
+$(TARGET): $(BITCODE) $(CONVERTER)
+	./$(CONVERTER) $(BITCODE) $(TARGETDIR)
+
+$(CONVERTER): $(wildcard converter/src/*) converter/CMakeLists.txt
+	cd converter && cmake -B build && cd build && $(MAKE)
 
 $(BITCODE): $(OBJS)
 	$(LD) $^ -o $@
 
-$(O)/%.bc: $(O)/%.ll
-	$(AS) $< -o $@
+$(O)/%.bc: src/%.c $(O) $(wildcard src/*.h) $(wildcard libc/include/*.h)
+	$(CC) $(CFLAGS) -c $< -o /dev/stdout | $(AS) /dev/stdin -o $@
 
-$(O)/%.ll: src/%.c $(O) $(wildcard src/*.h) $(wildcard libc/include/*.h)
-	$(CC) $(CFLAGS) -c $< -o $@
-
-$(O)/%.ll: libc/src/%.c $(O) $(wildcard src/*.h) $(wildcard libc/include/*.h)
-	$(CC) $(CFLAGS) -ffreestanding -c $< -o $@
+$(O)/%.bc: libc/src/%.c $(O) $(wildcard src/*.h) $(wildcard libc/include/*.h)
+	$(CC) $(CFLAGS) -ffreestanding -c $< -o /dev/stdout | $(AS) /dev/stdin -o $@
 

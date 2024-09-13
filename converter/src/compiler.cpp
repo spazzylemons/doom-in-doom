@@ -3,6 +3,7 @@
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
@@ -20,6 +21,19 @@ void Compiler::compile() {
 
 void Compiler::compileData() {
     const auto& layout = m->getDataLayout();
+
+    // Make sure all functions that have their address taken have an index.
+    for (const auto& func : *m) {
+        if (func.hasAddressTaken()) {
+            globalMemory.registerFunction(&func);
+        }
+    }
+
+    auto& e = llvm::errs();
+    if (llvm::verifyModule(*m, &e)) {
+        fprintf(stderr, "Module is broken\n");
+        exit(EXIT_FAILURE);
+    }
 
     // First, find where globals will live in memory.
     for (const auto& global : m->globals()) {
@@ -42,39 +56,10 @@ void Compiler::compileCode() {
         // Process any LLVM builtins.
         processBuiltins(func);
         // Make sure we didn't break it.
-        llvm::verifyFunction(func);
-    }
-
-    for (const auto& func : *m) {
-        for (auto user : func.users()) {
-            bool isReferencedAsPtr = false;
-
-            if (auto ins = llvm::dyn_cast<llvm::CallInst>(user)) {
-                auto i = 0;
-                for (const auto& arg : ins->operands()) {
-                    if (++i == ins->getNumOperands() && llvm::isa<llvm::CallInst>(ins))
-                        continue;
-
-                    if (arg == &func) {
-                        printf("A %s:\n", func.getName().data());
-                        ins->print(llvm::outs());
-                        llvm::outs() << "\n";
-
-                        isReferencedAsPtr = true;
-                        break;
-                    }
-                }
-            } else {
-                printf("B %s:\n", func.getName().data());
-                user->print(llvm::outs());
-                llvm::outs() << "\n";
-
-                isReferencedAsPtr = true;
-            }
-
-            if (isReferencedAsPtr) {
-                globalMemory.registerFunction(&func);
-            }
+        auto& e = llvm::errs();
+        if (llvm::verifyFunction(func, &e)) {
+            fprintf(stderr, "Function is broken\n");
+            exit(EXIT_FAILURE);
         }
     }
 
@@ -154,6 +139,7 @@ void Compiler::remove64Bit(llvm::Function& f) {
 void Compiler::processBuiltins(llvm::Function& f) {
     auto& ctx = m->getContext();
     const auto& layout = m->getDataLayout();
+    auto intType = llvm::IntegerType::get(ctx, 32);
 
     for (auto& block : f) {
         for (auto nextIns = &*block.begin(); nextIns != nullptr; ) {
@@ -169,8 +155,10 @@ void Compiler::processBuiltins(llvm::Function& f) {
                         ins->eraseFromParent();
                     } else if (name.starts_with("llvm.memset") || name.starts_with("llvm.memcpy") || name.starts_with("llvm.memmove")) {
                         llvm::Function *replacement;
+                        bool isMemset = false;
                         if (name.starts_with("llvm.memset")) {
                             replacement = m->getFunction("memset");
+                            isMemset = true;
                         } else if (name.starts_with("llvm.memcpy")) {
                             replacement = m->getFunction("memcpy");
                         } else if (name.starts_with("llvm.memmove")) {
@@ -183,7 +171,27 @@ void Compiler::processBuiltins(llvm::Function& f) {
                         // Remove last argument
                         std::vector<llvm::Value *> newArgs;
                         newArgs.push_back(callIns->getArgOperand(0));
-                        newArgs.push_back(callIns->getArgOperand(1));
+
+                        if (isMemset) {
+                            // Promote memset arg to 32-bit.
+                            auto fillValue = callIns->getArgOperand(1);
+                            if (auto fillArg = llvm::dyn_cast<llvm::ConstantInt>(fillValue)) {
+                                const auto& lenValue = fillArg->getValue();
+
+                                auto newFillValue = lenValue.zext(32);
+                                auto newFill = llvm::ConstantInt::get(ctx, newFillValue);
+                                newArgs.push_back(newFill);
+                            } else {
+                                auto fillExpand = llvm::CastInst::Create(
+                                    llvm::Instruction::CastOps::ZExt,
+                                    fillValue,
+                                    intType);
+                                fillExpand->insertAfter(llvm::cast<llvm::Instruction>(fillValue));
+                                newArgs.push_back(fillExpand);
+                            }
+                        } else {
+                            newArgs.push_back(callIns->getArgOperand(1));
+                        }
 
                         // Convert 64-bit lengths to 32-bit.
                         if (auto lenArg = llvm::dyn_cast<llvm::ConstantInt>(callIns->getArgOperand(2))) {

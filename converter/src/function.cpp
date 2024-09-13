@@ -68,12 +68,12 @@ static std::string signExtend(const std::string& value, unsigned int bits) {
     auto m = 32 - bits;
     auto v = std::to_string(m);
     // TODO test if this works in practice.
-    return "int(" + value + "<<" + v + ")>>" + v;
+    return "(int(" + value + "<<" + v + ")>>" + v + ")";
 }
 
 std::string FuncCompileCtx::getValue(const llvm::Value *val) {
     if (auto v = llvm::dyn_cast<llvm::ConstantInt>(val)) {
-        return std::to_string(v->getLimitedValue()) + "U";
+        return std::to_string(v->getZExtValue()) + "U";
     } else if (auto v = llvm::dyn_cast<llvm::Instruction>(val)) {
         return instructions.at(v);
     } else if (auto v = llvm::dyn_cast<llvm::ConstantExpr>(val)) {
@@ -81,12 +81,15 @@ std::string FuncCompileCtx::getValue(const llvm::Value *val) {
         std::string result;
         if (auto ins = llvm::dyn_cast<llvm::GetElementPtrInst>(baseIns)) {
             llvm::APInt elementOffset(32, 0);
-            assert(ins->accumulateConstantOffset(layout, elementOffset));
+            if (!ins->accumulateConstantOffset(layout, elementOffset)) {
+                fprintf(stderr, "Non-constant offset\n");
+                exit(EXIT_FAILURE);
+            }
 
             auto ptrName = ins->getOperand(0)->getName().str();
             auto ptrOffset = memory.getAddress(ptrName);
 
-            result = std::to_string(ptrOffset + elementOffset.getLimitedValue());
+            result = std::to_string(ptrOffset + elementOffset.getZExtValue()) + "U";
         } else if (auto ins = llvm::dyn_cast<llvm::PtrToIntInst>(baseIns)) {
             result = std::move(getValue(ins->getOperand(0)));
         } else if (auto ins = llvm::dyn_cast<llvm::IntToPtrInst>(baseIns)) {
@@ -98,19 +101,17 @@ std::string FuncCompileCtx::getValue(const llvm::Value *val) {
         baseIns->deleteValue();
         return result;
     } else if (auto v = llvm::dyn_cast<llvm::GlobalVariable>(val)) {
-        std::ostringstream s;
-        s << memory.getAddress(v->getName().str());
-        return s.str();
+        return std::to_string(memory.getAddress(v->getName().str())) + "U";
     } else if (auto v = llvm::dyn_cast<llvm::ConstantPointerNull>(val)) {
-        return "0";
+        return "0U";
     } else if (auto v = llvm::dyn_cast<llvm::Function>(val)) {
-        return std::to_string(memory.getFuncIndex(v));
+        return std::to_string(memory.getFuncIndex(v)) + "U";
     } else if (auto v = llvm::dyn_cast<llvm::Argument>(val)) {
         return "a" + std::to_string(v->getArgNo());
     } else if (auto v = llvm::dyn_cast<llvm::PoisonValue>(val)) {
-        return "0";
+        return "0U";
     } else if (auto v = llvm::dyn_cast<llvm::UndefValue>(val)) {
-        return "0";
+        return "0U";
     } else {
         val->printAsOperand(llvm::errs());
         llvm::errs() << "\n";
@@ -128,6 +129,9 @@ std::string FuncCompileCtx::getSignedValue(const llvm::Value *val) {
         auto bits = layout.getTypeSizeInBits(val->getType()).getFixedValue();
         if (bits < 32) {
             return signExtend(base, bits);
+        } else if (bits > 32) {
+            fprintf(stderr, "Sign-extending value that is too large\n");
+            exit(EXIT_FAILURE);
         } else {
             return "int(" + base + ")";
         }
@@ -150,7 +154,7 @@ void FuncCompileCtx::allocRegisters(const llvm::BasicBlock& block) {
         bool isUsedOutsideOfBlock = false;
         for (const auto user : ins.users()) {
             if (auto ins = llvm::dyn_cast<llvm::Instruction>(user)) {
-                if (ins->getParent() != &block) {
+                if (llvm::isa<llvm::PHINode>(ins) || ins->getParent() != &block) {
                     isUsedOutsideOfBlock = true;
                     break;
                 }
@@ -269,6 +273,7 @@ void FuncCompileCtx::compile(const llvm::Function& func) {
             i++;
         }
         content << "}\n";
+        content << "Unreachable();\n";
 
         // makes gzdoom happy to have return statement here
         if (func.getReturnType()->isSized()) {
@@ -290,11 +295,7 @@ void FuncCompileCtx::compileIns(const llvm::Instruction& ins) {
         compileTerminator(ins);
     } else {
         if (ins.users().begin() != ins.users().end()) {
-            auto t = ins.getType();
-            auto hasValue = t->isSized();
-            if (hasValue) {
-                content << getValue(&ins) << "=";
-            }
+            content << getValue(&ins) << "=";
         }
         compileValue(ins);
         content << ";\n";
@@ -314,7 +315,7 @@ void FuncCompileCtx::compileTerminator(const llvm::Instruction& baseIns) {
             }
             content << ";\n";
 
-            return;
+            break;
         }
 
         case llvm::Instruction::Br: {
@@ -343,7 +344,7 @@ void FuncCompileCtx::compileTerminator(const llvm::Instruction& baseIns) {
             content << "lastLabel=label;\n";
             content << "switch(" << getValue(ins.getCondition()) << "){\n";
             for (const auto& c : ins.cases()) {
-                content << "case " << c.getCaseValue()->getLimitedValue() << ":\n";
+                content << "case " << c.getCaseValue()->getZExtValue() << ":\n";
                 content << "label=" << blocks.at(c.getCaseSuccessor()) << ";\n";
                 content << "break;\n";
             }
@@ -355,7 +356,7 @@ void FuncCompileCtx::compileTerminator(const llvm::Instruction& baseIns) {
 
         case llvm::Instruction::Unreachable: {
             content << "Unreachable();\n";
-            return;
+            break;
         }
 
         default: {
@@ -405,8 +406,11 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                 break;
         }
 
+        if (needsTruncation) {
+            content << "(";
+        }
+
         if (lhsSigned) {
-            content << "uint(";
             content << getSignedValue(ins.getOperand(0));
         } else {
             content << getValue(ins.getOperand(0));
@@ -457,11 +461,8 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
             content << getValue(ins.getOperand(1));
         }
 
-        if (lhsSigned) {
-            content << ")"; // close uint cast
-        }
-
         if (needsTruncation) {
+            content << ")";
             truncateValue(baseIns.getType());
         }
     } else {
@@ -524,18 +525,21 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                 content << getValue(ins.getOperand(0));
 
                 llvm::MapVector<llvm::Value *, llvm::APInt> offsets;
-                ins.collectOffset(layout, 32, offsets, constantOffset);
+                if (!ins.collectOffset(layout, 32, offsets, constantOffset)) {
+                    fprintf(stderr, "Failed to collect offset\n");
+                    exit(EXIT_FAILURE);
+                }
 
                 for (auto& [val, scale] : offsets) {
                     content << "+" << getValue(val);
-                    auto scaleVal = scale.getLimitedValue();
+                    auto scaleVal = scale.getZExtValue();
                     if (scaleVal != 1) {
                         content << "*";
-                        content << scale.getLimitedValue();
+                        content << scale.getZExtValue();
                     }
                 }
 
-                auto c = constantOffset.getLimitedValue();
+                auto c = constantOffset.getZExtValue();
                 if (c != 0) {
                     content << "+" << c;
                 }
@@ -548,49 +552,54 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
 
                 if (auto f = ins.getCalledFunction()) {
                     auto name = f->getName();
-                    if (name.equals("llvm.va_start")) {
-                        content << "v.Start";
-                    } else if (name.equals("llvm.va_end")) {
-                        content << "v.End";
-                    } else if (name.starts_with("llvm.umin.")) {
-                        auto rhs = getValue(ins.getArgOperand(1));
-                        auto lhs = getValue(ins.getArgOperand(0));
-                        content << lhs << "<" << rhs << "?" << lhs << ":" << rhs;
-                        break;
-                    } else if (name.starts_with("llvm.umax.")) {
-                        auto lhs = getValue(ins.getArgOperand(0));
-                        auto rhs = getValue(ins.getArgOperand(1));
-                        content << lhs << ">" << rhs << "?" << lhs << ":" << rhs;
-                        break;
-                    } else if (name.starts_with("llvm.smin.")) {
-                        auto sLhs = getSignedValue(ins.getArgOperand(0));
-                        auto sRhs = getSignedValue(ins.getArgOperand(1));
-                        auto lhs = getValue(ins.getArgOperand(0));
-                        auto rhs = getValue(ins.getArgOperand(1));
-                        content << sLhs << "<" << sRhs << "?" << lhs << ":" << rhs;
-                        break;
-                    } else if (name.starts_with("llvm.smax.")) {
-                        auto sLhs = getSignedValue(ins.getArgOperand(0));
-                        auto sRhs = getSignedValue(ins.getArgOperand(1));
-                        auto lhs = getValue(ins.getArgOperand(0));
-                        auto rhs = getValue(ins.getArgOperand(1));
-                        content << sLhs << ">" << sRhs << "?" << lhs << ":" << rhs;
-                        break;
-                    } else if (name.starts_with("llvm.abs.")) {
-                        auto a = getValue(ins.getArgOperand(0));
-                        content << "abs(" << a << ")";
-                        break;
-                    } else if (name.starts_with("llvm.fshl.")) {
-                        auto a = getValue(ins.getArgOperand(0));
-                        auto b = getValue(ins.getArgOperand(1));
-                        auto c = getValue(ins.getArgOperand(2));
-                        content << "(" << a << "<<" << c << ")|(" << b << ">>(32-" << c << "))";
-                        break;
-                    } else if (name.starts_with("llvm.usub.sat.")) {
-                        auto a = getValue(ins.getArgOperand(0));
-                        auto b = getValue(ins.getArgOperand(1));
-                        content << a << "<" << b << "?0:" << b;
-                        break;
+                    if (name.starts_with("llvm.")) {
+                        if (name.equals("llvm.va_start")) {
+                            content << "v.Start";
+                        } else if (name.equals("llvm.va_end")) {
+                            content << "v.End";
+                        } else if (name.starts_with("llvm.umin.")) {
+                            auto rhs = getValue(ins.getArgOperand(1));
+                            auto lhs = getValue(ins.getArgOperand(0));
+                            content << lhs << "<" << rhs << "?" << lhs << ":" << rhs;
+                            break;
+                        } else if (name.starts_with("llvm.umax.")) {
+                            auto lhs = getValue(ins.getArgOperand(0));
+                            auto rhs = getValue(ins.getArgOperand(1));
+                            content << lhs << ">" << rhs << "?" << lhs << ":" << rhs;
+                            break;
+                        } else if (name.starts_with("llvm.smin.")) {
+                            auto sLhs = getSignedValue(ins.getArgOperand(0));
+                            auto sRhs = getSignedValue(ins.getArgOperand(1));
+                            auto lhs = getValue(ins.getArgOperand(0));
+                            auto rhs = getValue(ins.getArgOperand(1));
+                            content << sLhs << "<" << sRhs << "?" << lhs << ":" << rhs;
+                            break;
+                        } else if (name.starts_with("llvm.smax.")) {
+                            auto sLhs = getSignedValue(ins.getArgOperand(0));
+                            auto sRhs = getSignedValue(ins.getArgOperand(1));
+                            auto lhs = getValue(ins.getArgOperand(0));
+                            auto rhs = getValue(ins.getArgOperand(1));
+                            content << sLhs << ">" << sRhs << "?" << lhs << ":" << rhs;
+                            break;
+                        } else if (name.starts_with("llvm.abs.")) {
+                            auto a = getSignedValue(ins.getArgOperand(0));
+                            content << "abs(" << a << ")";
+                            break;
+                        } else if (name.starts_with("llvm.fshl.")) {
+                            auto a = getValue(ins.getArgOperand(0));
+                            auto b = getValue(ins.getArgOperand(1));
+                            auto c = getValue(ins.getArgOperand(2));
+                            content << "(" << a << "<<" << c << ")|(" << b << ">>(32-" << c << "))";
+                            break;
+                        } else if (name.starts_with("llvm.usub.sat.")) {
+                            auto a = getValue(ins.getArgOperand(0));
+                            auto b = getValue(ins.getArgOperand(1));
+                            content << a << "<" << b << "?0:" << b;
+                            break;
+                        } else {
+                            fprintf(stderr, "Unsupported intrinsic %s\n", name.data());
+                            exit(EXIT_FAILURE);
+                        }
                     } else {
                         content << "func_" << name.str();
                     }
@@ -710,7 +719,12 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
 
             case llvm::Instruction::Alloca: {
                 auto& ins = llvm::cast<llvm::AllocaInst>(baseIns);
-                content << "Alloca(" << ins.getAllocationSize(layout).value() << ")";
+                auto size = ins.getAllocationSize(layout);
+                if (size == std::nullopt) {
+                    fprintf(stderr, "Bad alloca\n");
+                }
+                auto al = ins.getAlign();
+                content << "Alloca(" << size.value() << "," << al.value() << ")";
                 break;
             }
 

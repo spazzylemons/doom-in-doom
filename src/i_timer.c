@@ -32,11 +32,3 @@ int  I_GetTime (void)
 {
     return ticcount;
 }
-
-void I_WaitVBL(int count)
-{
-    while (count > 0) {
-        I_EndFrame();
-        count -= 2;
-    }
-}
