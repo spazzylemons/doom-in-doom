@@ -17,6 +17,7 @@ struct GlobalMemory;
 class Section {
     std::map<std::string, uint32_t> variables;
     uint32_t address = 0;
+    uint32_t maxAlign = 1;
 
 public:
     void registerGlobal(const llvm::GlobalVariable& global, const llvm::DataLayout& layout);
@@ -26,6 +27,8 @@ public:
     constexpr uint32_t size() const {
         return address;
     }
+
+    void align();
 };
 
 struct FuncPtrType {
@@ -74,6 +77,8 @@ public:
 
     // Initialize memory for a global variable.
     void initializeGlobal(const llvm::GlobalVariable& global, const llvm::DataLayout& layout);
+
+    void align();
 
     // Allocate memory to store non-zero initialized globals.
     void allocateMemory();

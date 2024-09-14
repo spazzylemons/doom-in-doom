@@ -14,8 +14,6 @@ CFLAGS := --target=i386-unknown \
 	-S \
 	-emit-llvm \
 
-LDFLAGS := -nostdlib
-
 O := build
 
 TARGETDIR := wadsrc/DoomInDoom
@@ -47,7 +45,6 @@ OBJS := \
     $(O)/d_main.bc \
     $(O)/d_mode.bc \
     $(O)/d_net.bc \
-    $(O)/doomdef.bc \
     $(O)/doomstat.bc \
     $(O)/dstrings.bc \
     $(O)/f_finale.bc \

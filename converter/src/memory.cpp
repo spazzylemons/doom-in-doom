@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/Support/TypeSize.h>
 #include <ostream>
 
 #include <llvm/IR/Constants.h>
@@ -18,20 +19,12 @@ FuncPtrType::FuncPtrType(const llvm::FunctionType *f)
     , isVarArg(f->isVarArg())
     , numParams(f->getNumParams()) {}
 
-// Start storing data at address 4, so nothing is stored at NULL.
-static constexpr uint32_t MEMORY_INITIAL_OFFSET = 4;
-
-static constexpr uint32_t bitSizeToByteSize(uint32_t bitSize) {
-    return (bitSize + 7) >> 3;
-}
-
-static uint32_t getTypeSize(llvm::Type *t, const llvm::DataLayout& layout) {
-    return bitSizeToByteSize(layout.getTypeSizeInBits(t).getFixedValue());
-}
+// Start storing data way past 0, for alignment and null-pointer reasons.
+static constexpr uint32_t MEMORY_INITIAL_OFFSET = 1024;
 
 void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const llvm::DataLayout& layout) {
     if (auto v = llvm::dyn_cast<llvm::ConstantInt>(c)) {
-        auto intSize = getTypeSize(v->getType(), layout);
+        auto intSize = layout.getTypeStoreSize(v->getType()).getFixedValue();
         if (intSize > 4) {
             fprintf(stderr, "Int too large\n");
             exit(EXIT_FAILURE);
@@ -43,12 +36,12 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
         auto structLayout = layout.getStructLayout(structType);
         auto numElements = structType->getNumElements();
         for (auto i = 0U; i < numElements; i++) {
-            auto elementOffset = bitSizeToByteSize(structLayout->getElementOffsetInBits(i).getFixedValue());
+            auto elementOffset = structLayout->getElementOffset(i).getFixedValue();
             writeConstant(offset + elementOffset, v->getAggregateElement(i), layout);
         }
     } else if (auto v = llvm::dyn_cast<llvm::ConstantArray>(c)) {
         auto arrayType = v->getType();
-        auto arrayStride = getTypeSize(arrayType->getArrayElementType(), layout);
+        auto arrayStride = layout.getTypeStoreSize(arrayType->getArrayElementType()).getFixedValue();
         auto numElements = arrayType->getNumElements();
         auto elementOffset = 0U;
         for (auto i = 0U; i < numElements; i++) {
@@ -61,7 +54,7 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
         writePtr(offset, getFuncIndex(v));
     } else if (auto v = llvm::dyn_cast<llvm::ConstantDataArray>(c)) {
         auto arrayType = v->getType();
-        auto arrayStride = getTypeSize(arrayType->getArrayElementType(), layout);
+        auto arrayStride = layout.getTypeStoreSize(arrayType->getArrayElementType()).getFixedValue();
         auto numElements = arrayType->getNumElements();
         auto elementOffset = 0U;
         for (auto i = 0U; i < numElements; i++) {
@@ -71,7 +64,7 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
     } else if (auto v = llvm::dyn_cast<llvm::GlobalVariable>(c)) {
         writePtr(offset, getAddress(v->getName().data()));
     } else if (auto v = llvm::dyn_cast<llvm::ConstantAggregateZero>(c)) {
-        auto size = getTypeSize(v->getType(), layout);
+        auto size = layout.getTypeStoreSize(v->getType()).getFixedValue();
         for (auto i = 0U; i < size; i++) {
             writeByte(offset++, 0);
         }
@@ -87,7 +80,7 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
         auto finalOffset = ptrOffset + elementOffset.getLimitedValue();
         writePtr(offset, finalOffset);
     } else {
-        fprintf(stderr, "Constant type unsupported: ");
+        llvm::errs() << "Constant type unsupported: ";
         c->print(llvm::errs());
         llvm::errs() << "\n";
 
@@ -96,9 +89,19 @@ void GlobalMemory::writeConstant(uint32_t offset, const llvm::Constant *c, const
 }
 
 void Section::registerGlobal(const llvm::GlobalVariable& global, const llvm::DataLayout &layout) {
+    auto t = global.getInitializer()->getType();
+
+    // Align variable.
+    auto alignment = layout.getPrefTypeAlign(t).value();
+    address = llvm::alignTo(address, alignment);
+    if (alignment > maxAlign)
+        maxAlign = alignment;
+
     auto& var = variables[global.getName().str()];
     var = address;
-    address += bitSizeToByteSize(layout.getTypeSizeInBits(global.getInitializer()->getType()).getFixedValue());
+
+    // Add size of type.
+    address += layout.getTypeStoreSize(t);
 }
 
 void GlobalMemory::registerFunction(const llvm::Function *f) {
@@ -173,13 +176,22 @@ void GlobalMemory::writeInt(uint32_t addr, uint32_t value, uint8_t byteSize) {
     }
 }
 
+void Section::align() {
+    address = llvm::alignTo(address, maxAlign);
+}
+
+void GlobalMemory::align() {
+    bss.align();
+    data.align();
+}
+
 uint32_t GlobalMemory::getAddress(const std::string& name) const {
     uint32_t result;
     if (data.getAddress(name, result)) {
         return result + MEMORY_INITIAL_OFFSET;
     }
     if (bss.getAddress(name, result)) {
-        return result + + MEMORY_INITIAL_OFFSET + data.size();
+        return result + MEMORY_INITIAL_OFFSET + data.size();
     }
 
     fprintf(stderr, "Missing symbol '%s'\n", name.c_str());

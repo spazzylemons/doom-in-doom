@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/InstrTypes.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
@@ -35,15 +37,25 @@ void Compiler::compileData() {
         exit(EXIT_FAILURE);
     }
 
-    // First, find where globals will live in memory.
+    // Sort globals by size to minimize the length of the addresses.
+    std::vector<const llvm::GlobalVariable *> sortedGlobals;
     for (const auto& global : m->globals()) {
-        globalMemory.registerGlobal(global, layout);
+        sortedGlobals.push_back(&global);
+    }
+    std::sort(sortedGlobals.begin(), sortedGlobals.end(), [&](const llvm::GlobalVariable *a, const llvm::GlobalVariable *b){
+        return layout.getTypeStoreSize(a->getValueType()) < layout.getTypeStoreSize(b->getValueType());
+    });
+
+    // First, find where globals will live in memory.
+    for (const auto& global : sortedGlobals) {
+        globalMemory.registerGlobal(*global, layout);
     }
 
     // Next, initialize the data.
+    globalMemory.align();
     globalMemory.allocateMemory();
-    for (const auto& global : m->globals()) {
-        globalMemory.initializeGlobal(global, layout);
+    for (const auto& global : sortedGlobals) {
+        globalMemory.initializeGlobal(*global, layout);
     }
 }
 

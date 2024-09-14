@@ -1,4 +1,5 @@
-const MEMORY_SIZE = 16777216;
+const MEMORY_SIZE = 0x1800000;
+const MIN_VALID_MEMORY = 1024;
 
 class DoomInDoom : Actor {
     String linebuffer;
@@ -85,25 +86,25 @@ class DoomInDoom : Actor {
     }
 
     uint Load1(uint addr) {
-        if (addr < 4) ThrowAbortException("NULL READ 1");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 1");
         if (memory[addr] > 1) ThrowAbortException("BAD BOOLEAN");
         return !!memory[addr];
     }
 
     uint Load8(uint addr) {
-        if (addr < 4) ThrowAbortException("NULL READ 8");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 8");
         return memory[addr];
     }
 
     uint Load16(uint addr) {
-        if (addr < 4) ThrowAbortException("NULL READ 16");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 16");
         uint a = memory[addr++];
         uint b = memory[addr];
         return a | (b << 8);
     }
 
     uint Load32(uint addr) {
-        if (addr < 4) ThrowAbortException("NULL READ 32");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 32");
         uint a = memory[addr++];
         uint b = memory[addr++];
         uint c = memory[addr++];
@@ -111,21 +112,27 @@ class DoomInDoom : Actor {
         return a | (b << 8) | (c << 16) | (d << 24);
     }
 
+    void Store1(uint addr, uint value) {
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 1");
+        if (value > 1) ThrowAbortException("BAD WRITE 1");
+        memory[addr] = value;
+    }
+
     void Store8(uint addr, uint value) {
-        if (addr < 4) ThrowAbortException("NULL WRITE 8");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 8");
         if (value > 0xff) ThrowAbortException("BAD WRITE 8");
         memory[addr] = value;
     }
 
     void Store16(uint addr, uint value) {
-        if (addr < 4) ThrowAbortException("NULL WRITE 16");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 16");
         if (value > 0xffff) ThrowAbortException("BAD WRITE 16");
         memory[addr++] = value;
         memory[addr] = value >> 8;
     }
 
     void Store32(uint addr, uint value) {
-        if (addr < 4) ThrowAbortException("NULL WRITE 32");
+        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 32");
         memory[addr++] = value;
         memory[addr++] = value >> 8;
         memory[addr++] = value >> 16;
@@ -353,7 +360,7 @@ class DoomInDoom : Actor {
             memory[i] = 0;
         }
         for (i = 0; i < rom.Length(); i++) {
-            Store8(i + 4, rom.ByteAt(i));
+            Store8(i + MIN_VALID_MEMORY, rom.ByteAt(i));
         }
 
         stack = MEMORY_SIZE;
@@ -364,6 +371,29 @@ class DoomInDoom : Actor {
 
     void AddEvent(event_t e) {
         events.Push(e);
+    }
+
+    void InvestigateHeap() {
+        uint s = stack;
+        uint t = Alloca(4, 4);
+        uint b = func_I_ZoneBase(t) + 4;
+        uint a = b;
+        uint blocks = 0;
+        Map<uint, uint> blockThing;
+        do {
+            if (blockThing.CheckKey(a)) {
+                ThrowAbortException("Stuck in a loop");
+            }
+            if (a + Load32(a) != Load32(a + 16)) {
+                ThrowAbortException("Bad size/next link");
+            }
+            blockThing.InsertNew(a);
+            blocks++;
+            // Console.Printf("Block @ %u", a);
+            a = Load32(a + 16);
+        } while (a != b);
+        stack = s;
+        Console.Printf("%u blocks exist", blocks);
     }
 
     default {

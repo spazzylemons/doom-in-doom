@@ -70,9 +70,10 @@ void I_Tactile(int on, int off, int total)
 
 byte *I_ZoneBase (int *size)
 {
-    static byte zonemem[12 * 1024 * 1024];
+    // int32 for alignment reasons
+    static uint32_t zonemem[3 * 1024 * 1024];
     *size = sizeof(zonemem);
-    return zonemem;
+    return (byte *) zonemem;
 }
 
 void I_PrintBanner(const char *msg)

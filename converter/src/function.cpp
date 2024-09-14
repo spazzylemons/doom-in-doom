@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <llvm/Support/AllocatorBase.h>
 #include <set>
 
@@ -11,6 +12,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/GlobalVariable.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/InstrTypes.h>
@@ -31,8 +33,11 @@ struct FuncCompileCtx {
     std::map<const llvm::BasicBlock *, uint32_t> blocks;
     std::map<const llvm::Instruction *, std::string> instructions;
 
-    unsigned int globalCounter = 0U;
-    unsigned int localCounter = 0U;
+    uint32_t globalCounter = 0U;
+    uint32_t localCounter = 0U;
+    uint32_t phiCounter = 0U;
+
+    std::set<std::string> varNames;
 
     std::string getValue(const llvm::Value *val);
     std::string getSignedValue(const llvm::Value *val);
@@ -146,23 +151,31 @@ void FuncCompileCtx::allocRegisters(const llvm::BasicBlock& block) {
         localsAfter.insert(&ins);
     }
 
-    unsigned int nextIndex = 0U;
+    auto nextIndex = 0U;
+    auto localPhiCount = 0U;
 
     for (const auto& ins : block) {
         // Any instructions referenced only in their own block get a "local"
         // variable, otherwise get a "global" variable.
         bool isUsedOutsideOfBlock = false;
         for (const auto user : ins.users()) {
-            if (auto ins = llvm::dyn_cast<llvm::Instruction>(user)) {
-                if (llvm::isa<llvm::PHINode>(ins) || ins->getParent() != &block) {
+            if (auto userIns = llvm::dyn_cast<llvm::Instruction>(user)) {
+                if (llvm::isa<llvm::PHINode>(userIns) || userIns->getParent() != &block) {
                     isUsedOutsideOfBlock = true;
                     break;
                 }
             }
         }
 
+        if (llvm::isa<llvm::PHINode>(ins)) {
+            localPhiCount++;
+        }
+
+        std::string varName;
+
         if (isUsedOutsideOfBlock) {
             instructions[&ins] = globalName(globalCounter++);
+            varNames.insert(instructions.at(&ins));
         } else if (ins.users().begin() != ins.users().end()) {
             // To save on locals, check if any locals we've already allocated
             // have no more uses in this block.
@@ -189,14 +202,23 @@ void FuncCompileCtx::allocRegisters(const llvm::BasicBlock& block) {
             }
 
             localMapping[&ins] = reusable;
-            instructions[&ins] = localName(reusable);
+            varName = localName(reusable);
         }
 
         localsAfter.erase(&ins);
+
+        if (!varName.empty()) {
+            instructions[&ins] = varName;
+            varNames.insert(std::move(varName));
+        }
     }
 
     if (nextIndex > localCounter) {
         localCounter = nextIndex;
+    }
+
+    if (localPhiCount > phiCounter) {
+        phiCounter = localPhiCount;
     }
 }
 
@@ -234,20 +256,16 @@ void FuncCompileCtx::compile(const llvm::Function& func) {
         allocRegisters(block);
     }
 
-    if (globalCounter > 0) {
-        content << "uint ";
-        for (auto i = 0U; i < globalCounter; i++) {
-            if (i) content << ",";
-            content << globalName(i);
-        }
-        content << ";\n";
+    for (i = 0U; i < phiCounter; i++) {
+        varNames.insert("p" + std::to_string(i));
     }
 
-    if (localCounter > 0) {
+    if (!varNames.empty()) {
+        i = 0U;
         content << "uint ";
-        for (auto i = 0U; i < localCounter; i++) {
-            if (i) content << ",";
-            content << localName(i);
+        for (const auto& v : varNames) {
+            if (i++) content << ",";
+            content << v;
         }
         content << ";\n";
     }
@@ -285,8 +303,30 @@ void FuncCompileCtx::compile(const llvm::Function& func) {
 }
 
 void FuncCompileCtx::compileBlock(const llvm::BasicBlock& block) {
-    for (const auto& ins : block) {
-        compileIns(ins);
+    auto it = block.begin();
+    auto ie = block.end();
+
+    auto phiCount = 0U;
+    std::vector<const llvm::Instruction *> phiMapping;
+    for (; it != ie; it++) {
+        const auto& ins = *it;
+        if (llvm::isa<llvm::PHINode>(ins)) {
+            content << "p" << phiCount++ << "=";
+            compileValue(ins);
+            content << ";\n";
+            phiMapping.push_back(&ins);
+        } else {
+            break;
+        }
+    }
+
+    auto i = 0U;
+    for (auto ins : phiMapping) {
+        content << getValue(ins) << "=p" << i++ << ";\n";
+    }
+
+    for (; it != ie; it++) {
+        compileIns(*it);
     }
 }
 
@@ -394,11 +434,13 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
 
         bool needsTruncation;
         switch (opcode) {
-            // TODO does signed division need truncation?
             case llvm::Instruction::BinaryOps::Add:
             case llvm::Instruction::BinaryOps::Sub:
             case llvm::Instruction::BinaryOps::Mul:
             case llvm::Instruction::BinaryOps::Shl:
+            case llvm::Instruction::BinaryOps::AShr:
+            case llvm::Instruction::BinaryOps::SDiv:
+            case llvm::Instruction::BinaryOps::SRem:
                 needsTruncation = true;
                 break;
             default:
@@ -406,14 +448,21 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                 break;
         }
 
+        auto lhs = ins.getOperand(0);
+        auto rhs = ins.getOperand(1);
+
+        if (layout.getTypeSizeInBits(ins.getType()) == 32) {
+            needsTruncation = false;
+        }
+
         if (needsTruncation) {
             content << "(";
         }
 
         if (lhsSigned) {
-            content << getSignedValue(ins.getOperand(0));
+            content << getSignedValue(lhs);
         } else {
-            content << getValue(ins.getOperand(0));
+            content << getValue(lhs);
         }
 
         switch (opcode) {
@@ -456,9 +505,9 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
         }
 
         if (rhsSigned) {
-            content << getSignedValue(ins.getOperand(1));
+            content << getSignedValue(rhs);
         } else {
-            content << getValue(ins.getOperand(1));
+            content << getValue(rhs);
         }
 
         if (needsTruncation) {
@@ -472,21 +521,22 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                 auto bitWidth = layout.getTypeSizeInBits(ins.getAccessType()).getFixedValue();
                 switch (bitWidth) {
                     case 1:
-                        content << "Load1(" << getValue(ins.getOperand(0)) << ")";
+                        content << "Load1(";
                         break;
                     case 8:
-                        content << "Load8(" << getValue(ins.getOperand(0)) << ")";
+                        content << "Load8(";
                         break;
                     case 16:
-                        content << "Load16(" << getValue(ins.getOperand(0)) << ")";
+                        content << "Load16(";
                         break;
                     case 32:
-                        content << "Load32(" << getValue(ins.getOperand(0)) << ")";
+                        content << "Load32(";
                         break;
                     default:
                         fprintf(stderr, "Unsupported load width %lu\n", bitWidth);
                         exit(EXIT_FAILURE);
                 }
+                content << getValue(ins.getOperand(0)) << ")";
 
                 break;
             }
@@ -496,6 +546,8 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                 auto bitWidth = layout.getTypeSizeInBits(ins.getAccessType()).getFixedValue();
                 switch (bitWidth) {
                     case 1:
+                        content << "Store1(";
+                        break;
                     case 8:
                         content << "Store8(";
                         break;
@@ -526,23 +578,28 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
 
                 llvm::MapVector<llvm::Value *, llvm::APInt> offsets;
                 if (!ins.collectOffset(layout, 32, offsets, constantOffset)) {
-                    fprintf(stderr, "Failed to collect offset\n");
+                    fprintf(stderr, "Failed to read GEP offset\n");
                     exit(EXIT_FAILURE);
                 }
 
                 for (auto& [val, scale] : offsets) {
+                    auto scaleVal = scale.getSExtValue();
                     content << "+" << getValue(val);
-                    auto scaleVal = scale.getZExtValue();
-                    if (scaleVal != 1) {
-                        content << "*";
-                        content << scale.getZExtValue();
+                    if (scaleVal > 1) {
+                        content << "*" << scaleVal;
+                    } else if (scaleVal < 1) {
+                        fprintf(stderr, "Negative offset not supported\n");
+                        exit(EXIT_FAILURE);
                     }
                 }
 
-                auto c = constantOffset.getZExtValue();
-                if (c != 0) {
-                    content << "+" << c;
+                auto c = constantOffset.getSExtValue();
+                if (c > 0) {
+                    content << "+" << c << "U";
+                } else if (c < 0) {
+                    content << "-" << -c << "U";
                 }
+
                 break;
             }
 
@@ -594,7 +651,7 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                         } else if (name.starts_with("llvm.usub.sat.")) {
                             auto a = getValue(ins.getArgOperand(0));
                             auto b = getValue(ins.getArgOperand(1));
-                            content << a << "<" << b << "?0:" << b;
+                            content << a << "<" << b << "?0:(" << a << "-" << b << ")";
                             break;
                         } else {
                             fprintf(stderr, "Unsupported intrinsic %s\n", name.data());
@@ -775,7 +832,7 @@ void FuncCompileCtx::truncateValue(llvm::Type *t) {
         fprintf(stderr, "Integer too wide\n");
         exit(EXIT_FAILURE);
     } else if (bitWidth < 32) {
-        content << "&" << ((1 << bitWidth) - 1);
+        content << "&" << ((1 << bitWidth) - 1) << "U";
     }
 }
 
