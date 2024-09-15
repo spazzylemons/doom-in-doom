@@ -1,22 +1,12 @@
 #include <cstdio>
-#include <llvm/Support/AllocatorBase.h>
-#include <set>
-
 #include <cstdlib>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/Value.h>
-#include <llvm/Support/Casting.h>
-#include <llvm/Support/raw_ostream.h>
 #include <sstream>
+#include <set>
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DataLayout.h>
-#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/IR/GlobalVariable.h>
-#include <llvm/IR/DerivedTypes.h>
-#include <llvm/IR/InstrTypes.h>
-#include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
 
 #include "function.hpp"
@@ -72,7 +62,6 @@ static std::string localName(unsigned int index) {
 static std::string signExtend(const std::string& value, unsigned int bits) {
     auto m = 32 - bits;
     auto v = std::to_string(m);
-    // TODO test if this works in practice.
     return "(int(" + value + "<<" + v + ")>>" + v + ")";
 }
 
@@ -460,7 +449,7 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
         }
 
         if (lhsSigned) {
-            content << getSignedValue(lhs);
+            content << "(" << getSignedValue(lhs);
         } else {
             content << getValue(lhs);
         }
@@ -508,6 +497,11 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
             content << getSignedValue(rhs);
         } else {
             content << getValue(rhs);
+        }
+
+        if (lhsSigned) {
+            // Hack to get signed ops to work.
+            content << ")+0";
         }
 
         if (needsTruncation) {
@@ -617,26 +611,26 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                         } else if (name.starts_with("llvm.umin.")) {
                             auto rhs = getValue(ins.getArgOperand(1));
                             auto lhs = getValue(ins.getArgOperand(0));
-                            content << lhs << "<" << rhs << "?" << lhs << ":" << rhs;
+                            content << "(" << lhs << "<" << rhs << ")?" << lhs << ":" << rhs;
                             break;
                         } else if (name.starts_with("llvm.umax.")) {
                             auto lhs = getValue(ins.getArgOperand(0));
                             auto rhs = getValue(ins.getArgOperand(1));
-                            content << lhs << ">" << rhs << "?" << lhs << ":" << rhs;
+                            content << "(" << lhs << ">" << rhs << ")?" << lhs << ":" << rhs;
                             break;
                         } else if (name.starts_with("llvm.smin.")) {
                             auto sLhs = getSignedValue(ins.getArgOperand(0));
                             auto sRhs = getSignedValue(ins.getArgOperand(1));
                             auto lhs = getValue(ins.getArgOperand(0));
                             auto rhs = getValue(ins.getArgOperand(1));
-                            content << sLhs << "<" << sRhs << "?" << lhs << ":" << rhs;
+                            content << "(" << sLhs << "<" << sRhs << ")?" << lhs << ":" << rhs;
                             break;
                         } else if (name.starts_with("llvm.smax.")) {
                             auto sLhs = getSignedValue(ins.getArgOperand(0));
                             auto sRhs = getSignedValue(ins.getArgOperand(1));
                             auto lhs = getValue(ins.getArgOperand(0));
                             auto rhs = getValue(ins.getArgOperand(1));
-                            content << sLhs << ">" << sRhs << "?" << lhs << ":" << rhs;
+                            content << "(" << sLhs << ">" << sRhs << ")?" << lhs << ":" << rhs;
                             break;
                         } else if (name.starts_with("llvm.abs.")) {
                             auto a = getSignedValue(ins.getArgOperand(0));
@@ -646,12 +640,12 @@ void FuncCompileCtx::compileValue(const llvm::Instruction& baseIns) {
                             auto a = getValue(ins.getArgOperand(0));
                             auto b = getValue(ins.getArgOperand(1));
                             auto c = getValue(ins.getArgOperand(2));
-                            content << "(" << a << "<<" << c << ")|(" << b << ">>(32-" << c << "))";
+                            content << "(" << a << "<<" << c << ")|(" << b << ">>(32U-" << c << "))";
                             break;
                         } else if (name.starts_with("llvm.usub.sat.")) {
                             auto a = getValue(ins.getArgOperand(0));
                             auto b = getValue(ins.getArgOperand(1));
-                            content << a << "<" << b << "?0:(" << a << "-" << b << ")";
+                            content << "(" << a << "<" << b << ")?0U:(" << a << "-" << b << ")";
                             break;
                         } else {
                             fprintf(stderr, "Unsupported intrinsic %s\n", name.data());

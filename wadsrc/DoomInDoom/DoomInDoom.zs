@@ -86,25 +86,20 @@ class DoomInDoom : Actor {
     }
 
     uint Load1(uint addr) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 1");
-        if (memory[addr] > 1) ThrowAbortException("BAD BOOLEAN");
         return !!memory[addr];
     }
 
     uint Load8(uint addr) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 8");
         return memory[addr];
     }
 
     uint Load16(uint addr) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 16");
         uint a = memory[addr++];
         uint b = memory[addr];
         return a | (b << 8);
     }
 
     uint Load32(uint addr) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL READ 32");
         uint a = memory[addr++];
         uint b = memory[addr++];
         uint c = memory[addr++];
@@ -113,26 +108,19 @@ class DoomInDoom : Actor {
     }
 
     void Store1(uint addr, uint value) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 1");
-        if (value > 1) ThrowAbortException("BAD WRITE 1");
         memory[addr] = value;
     }
 
     void Store8(uint addr, uint value) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 8");
-        if (value > 0xff) ThrowAbortException("BAD WRITE 8");
         memory[addr] = value;
     }
 
     void Store16(uint addr, uint value) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 16");
-        if (value > 0xffff) ThrowAbortException("BAD WRITE 16");
         memory[addr++] = value;
         memory[addr] = value >> 8;
     }
 
     void Store32(uint addr, uint value) {
-        if (addr < MIN_VALID_MEMORY) ThrowAbortException("NULL WRITE 32");
         memory[addr++] = value;
         memory[addr++] = value >> 8;
         memory[addr++] = value >> 16;
@@ -148,26 +136,35 @@ class DoomInDoom : Actor {
 
     // Based on JagDoom code, as we don't have 64-bit multiply in ZScript.
     uint func_FixedMul(int a, int b) {
-        int sign = a ^ b;
+        let sign = a ^ b;
         if (a < 0)
             a = -a;
 
         if (b < 0)
             b = -b;
 
-        uint a1 = a & 0xffff;
-        uint a2 = uint(a) >> 16;
-        uint b1 = b & 0xffff;
-        uint b2 = uint(b) >> 16;
-        uint c = (a1 * b1) >> 16;
-        c += a2 * b1;
-        c += b2 * a1;
-        c += (b2 * a2) << 16;
+        uint xl = a & 0xffff;
+        uint xh = uint(a) >> 16;
+        uint yl = b & 0xffff;
+        uint yh = uint(b) >> 16;
 
-        if (sign < 0)
-            c = -c;
+        uint lo = xl * yl;
+        uint mid = xh * yl + xl * yh;
+        uint hi = xh * yh;
 
-        return c;
+        uint last = lo;
+        lo += mid << 16;
+        hi += mid >> 16;
+
+        if (lo < last) ++hi;
+
+        if (sign < 0) {
+            hi = -hi;
+            if (lo) --hi;
+            lo = -lo;
+        }
+
+        return (hi << 16) | (lo >> 16);
     }
 
     // Based on JagDoom code, as we don't have 64-bit divide in ZScript.
@@ -353,6 +350,10 @@ class DoomInDoom : Actor {
         }
     }
 
+    uint func_I_GetTime() {
+        return ticCount;
+    }
+
     void Reset() {
         let rom = Wads.ReadLump(Wads.CheckNumForFullName("DoomInDoom/data.bin"));
         uint i;
@@ -373,27 +374,9 @@ class DoomInDoom : Actor {
         events.Push(e);
     }
 
-    void InvestigateHeap() {
-        uint s = stack;
-        uint t = Alloca(4, 4);
-        uint b = func_I_ZoneBase(t) + 4;
-        uint a = b;
-        uint blocks = 0;
-        Map<uint, uint> blockThing;
-        do {
-            if (blockThing.CheckKey(a)) {
-                ThrowAbortException("Stuck in a loop");
-            }
-            if (a + Load32(a) != Load32(a + 16)) {
-                ThrowAbortException("Bad size/next link");
-            }
-            blockThing.InsertNew(a);
-            blocks++;
-            // Console.Printf("Block @ %u", a);
-            a = Load32(a + 16);
-        } while (a != b);
-        stack = s;
-        Console.Printf("%u blocks exist", blocks);
+    void Run() {
+        func_D_RunFrame();
+        ticCount++;
     }
 
     default {
@@ -409,7 +392,7 @@ class DoomInDoom : Actor {
             // Load the function pointers.
             TNT1 A 0 Load;
             TNT1 A 0 Reset;
-            TNT1 A 1 func_D_RunFrame;
+            TNT1 A 1 Run;
             wait;
 	}
 }

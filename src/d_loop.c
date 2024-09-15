@@ -324,7 +324,7 @@ void TryRunTics (void)
     realtics = entertic - oldentertics;
     oldentertics = entertic;
 
-    // Run a single tic every time this function
+    // Run a single tic every time this function is called.
 
     BuildNewTic();
 
@@ -355,22 +355,6 @@ void TryRunTics (void)
     if (counts < 1)
 	counts = 1;
 
-    // wait for new tics if needed
-    while (lowtic < gametic/ticdup + counts)
-    {
-        lowtic = maketic;
-
-	if (lowtic < gametic/ticdup)
-	    I_Error ("TryRunTics: lowtic < gametic");
-
-        // Still no tics to run? Sleep until some are available.
-        if (lowtic < gametic/ticdup + counts)
-        {
-            I_EndFrame();
-            return;
-        }
-    }
-
     // run the count * ticdup dics
     while (counts--)
     {
@@ -395,8 +379,6 @@ void TryRunTics (void)
             TicdupSquash(set);
 	}
     }
-
-    I_EndFrame();
 }
 
 void D_RegisterLoopCallbacks(loop_interface_t *i)

@@ -5,7 +5,7 @@ LD := llvm-link
 SHELL=/bin/bash -eou pipefail
 
 CFLAGS := --target=i386-unknown \
-	-Os \
+	-Oz \
 	-nostdinc \
 	-fno-vectorize \
 	-fno-slp-vectorize \
@@ -55,7 +55,6 @@ OBJS := \
     $(O)/info.bc \
     $(O)/i_sound.bc \
     $(O)/i_system.bc \
-    $(O)/i_timer.bc \
     $(O)/i_video.bc \
     $(O)/m_argv.bc \
     $(O)/m_bbox.bc \

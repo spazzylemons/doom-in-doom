@@ -135,7 +135,7 @@ void Compiler::remove64Bit(llvm::Function& f) {
                 dstPtrHi->insertBefore(userIns);
 
                 auto storeLo = new llvm::StoreInst(loadLo, dstPtrLo, userIns);
-                auto storedHi = new llvm::StoreInst(loadHi, dstPtrHi, userIns);
+                auto storeHi = new llvm::StoreInst(loadHi, dstPtrHi, userIns);
 
                 if (userIns == nextIns) {
                     nextIns = nextIns->getNextNode();
