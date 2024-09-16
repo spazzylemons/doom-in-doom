@@ -498,7 +498,7 @@ void S_StartSound(void *origin_p, int sfx_id)
     }
 
     channels[cnum].pitch = pitch;
-    I_StartSound(sfx, cnum, volume, sep, channels[cnum].pitch);
+    I_StartSound(sfx_id, cnum, volume, sep, channels[cnum].pitch);
 }
 
 //

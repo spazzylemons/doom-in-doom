@@ -35,7 +35,10 @@
 #include "v_video.h"
 #include "w_wad.h"
 #include "z_zone.h"
-#include "i_rvsys.h"
+
+// Stuff implemented in ZScript.
+void I_GetCanvas(void);
+void I_DrawScreen(const byte *);
 
 // display has been set up?
 
@@ -87,13 +90,7 @@ void I_StartFrame (void)
 
 }
 
-void I_GetEvent(void)
-{
-    event_t ev;
-    if (I_RV_NextEvent(&ev)) {
-        D_PostEvent(&ev);
-    }
-}
+void I_GetEvent(void);
 
 //
 // I_StartTic
@@ -165,17 +162,10 @@ void I_ReadScreen (pixel_t* scr)
     memcpy(scr, I_VideoBuffer, SCREENWIDTH*SCREENHEIGHT*sizeof(*scr));
 }
 
-
-//
-// I_SetPalette
-//
-void I_SetPalette (byte *doompalette)
-{
-    I_RV_SetPalette(doompalette);
-}
-
 void I_InitGraphics(void)
 {
+    I_GetCanvas();
+
     // Set the palette
     byte *doompal = W_CacheLumpName(DEH_String("PLAYPAL"), PU_CACHE);
     I_SetPalette(doompal);
@@ -206,5 +196,5 @@ void I_BindVideoVariables(void)
 
 void I_EndFrame(void)
 {
-    I_RV_EndFrame(I_VideoBuffer);
+    I_DrawScreen(I_VideoBuffer);
 }

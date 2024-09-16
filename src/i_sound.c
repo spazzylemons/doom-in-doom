@@ -71,10 +71,6 @@ static int snd_mport = 0;
 //  allocates channel buffer, sets S_sfx lookup.
 //
 
-void I_InitSound(GameMission_t mission)
-{
-}
-
 void I_ShutdownSound(void)
 {
 }
@@ -86,49 +82,6 @@ int I_GetSfxLumpNum(sfxinfo_t *sfxinfo)
 
 void I_UpdateSound(void)
 {
-}
-
-static void CheckVolumeSeparation(int *vol, int *sep)
-{
-    if (*sep < 0)
-    {
-        *sep = 0;
-    }
-    else if (*sep > 254)
-    {
-        *sep = 254;
-    }
-
-    if (*vol < 0)
-    {
-        *vol = 0;
-    }
-    else if (*vol > 127)
-    {
-        *vol = 127;
-    }
-}
-
-void I_UpdateSoundParams(int channel, int vol, int sep)
-{
-    CheckVolumeSeparation(&vol, &sep);
-    I_RV_UpdateSound(channel, vol, sep);
-}
-
-void I_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep, int pitch)
-{
-    int id = (sfxinfo - S_sfx) - 1;
-    CheckVolumeSeparation(&vol, &sep);
-    I_RV_PlaySound(channel, id, vol, sep);
-}
-
-void I_StopSound(int channel)
-{
-}
-
-boolean I_SoundIsPlaying(int channel)
-{
-    return I_RV_SoundIsPlaying(channel);
 }
 
 void I_PrecacheSounds(sfxinfo_t *sounds, int num_sounds)
@@ -154,11 +107,6 @@ void I_PauseSong(void)
 
 void I_ResumeSong(void)
 {
-}
-
-void I_PlaySong(const char *name, boolean looping)
-{
-    I_RV_SetMusic(name, looping);
 }
 
 void I_StopSong(void)

@@ -4,15 +4,6 @@
 #include "doomtype.h"
 #include "w_wad.h"
 
-// Temporary for local.
-void I_RV_Init(void);
-
-// End the current frame. Pass in the screen to draw.
-void I_RV_EndFrame(const byte *screen);
-
-// Update the palette.
-void I_RV_SetPalette(const byte *palette);
-
 // Get the next event. Returns 1 if event occurred.
 int I_RV_NextEvent(event_t *ev);
 
@@ -40,18 +31,6 @@ void I_RV_SaveStart(int id);
 void I_RV_SaveCommit(void);
 
 void I_RV_SaveClose(void);
-
-// SOUND //
-
-void I_RV_SetMusic(const char *name, int looping);
-
-void I_RV_PlaySound(int channel, int id, int vol, int sep);
-
-void I_RV_UpdateSound(int channel, int vol, int sep);
-
-void I_RV_StopSound(int channel);
-
-int I_RV_SoundIsPlaying(int channel);
 
 // MISC //
 

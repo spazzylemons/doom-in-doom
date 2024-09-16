@@ -1,68 +1,42 @@
-//
-// Copyright(C) 1993-1996 Id Software, Inc.
-// Copyright(C) 2005-2014 Simon Howard
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// DESCRIPTION:
-//	Fixed point arithemtics, implementation.
-//
-
-//
-// Fixed point, 32bit as 16.16.
-//
-const FRACBITS = 16;
-const FRACUNIT = (1 << FRACBITS);
-
-struct Fixed {
+extend class DoomInDoom {
     // Based on JagDoom code, as we don't have 64-bit multiply in ZScript.
-    static int Mul(int a, int b) {
+    uint func_FixedMul(uint a, uint b) {
         int sign = a ^ b;
-        if (a < 0)
+        if (int(a) < 0)
             a = -a;
 
-        if (b < 0)
+        if (int(b) < 0)
             b = -b;
 
-        uint a1 = a & 0xffff;
-        uint a2 = uint(a) >> 16;
-        uint b1 = b & 0xffff;
-        uint b2 = uint(b) >> 16;
-        uint c = (a1 * b1) >> 16;
-        c += a2 * b1;
-        c += b2 * a1;
-        c += (b2 * a2) << 16;
+        uint xl = a & 0xffff;
+        uint xh = a >> 16;
+        uint yl = b & 0xffff;
+        uint yh = b >> 16;
 
-        if (sign < 0)
-            c = -c;
+        uint lo = xl * yl;
+        uint mid = xh * yl + xl * yh;
+        uint hi = xh * yh;
 
-        return c;
+        uint last = lo;
+        lo += mid << 16;
+        hi += mid >> 16;
+
+        if (lo < last) ++hi;
+
+        if (sign < 0) {
+            hi = -hi;
+            if (lo) --hi;
+            lo = -lo;
+        }
+
+        return (hi << 16) | (lo >> 16);
     }
 
     // Based on JagDoom code, as we don't have 64-bit divide in ZScript.
-    static int Div(int a, int b) {
+    uint func_FixedDiv(uint a, uint b) {
         int sign = a ^ b;
-        uint aa, bb;
-
-        if (a < 0) {
-            aa = -a;
-        } else {
-            aa = a;
-        }
-
-        if (b < 0) {
-            bb = -b;
-        } else {
-            bb = b;
-        }
+        uint aa = abs(int(a));
+        uint bb = abs(int(b));
 
         if ((aa >> 14) >= bb) {
             return sign < 0 ? 0x80000000 : 0x7fffffff;

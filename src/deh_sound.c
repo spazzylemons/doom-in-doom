@@ -33,7 +33,7 @@ DEH_BEGIN_MAPPING(sound_mapping, sfxinfo_t)
     DEH_MAPPING("Zero 3", volume)
     DEH_UNSUPPORTED_MAPPING("Zero 4")
     DEH_MAPPING("Neg. One 1", usefulness)
-    DEH_MAPPING("Neg. One 2", lumpnum)
+    DEH_UNSUPPORTED_MAPPING("Neg. One 2")
 DEH_END_MAPPING
 
 static void *DEH_SoundStart(deh_context_t *context, char *line)

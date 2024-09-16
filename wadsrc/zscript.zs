@@ -5,24 +5,12 @@ version "4.12.2"
 
 #include "DoomInDoom/d_event.zs"
 #include "DoomInDoom/doomkeys.zs"
+#include "DoomInDoom/i_sound.zs"
+#include "DoomInDoom/i_video.zs"
+#include "DoomInDoom/m_fixed.zs"
 #include "DoomInDoom/sounds.zs"
 
 #include "DoomInDoom/code.zs"
-
-class DoomSFX : Actor {
-    default {
-        Height 1;
-        Radius 1;
-
-        +NOCLIP
-    }
-
-    states {
-        Spawn:
-            TNT1 A -1;
-            stop;
-    }
-}
 
 class InputListener : EventHandler {
     static clearscope int RemapScancode(InputEvent e) {

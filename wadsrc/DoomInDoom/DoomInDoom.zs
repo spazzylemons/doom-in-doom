@@ -11,12 +11,6 @@ class DoomInDoom : Actor {
 
     uint ticCount;
 
-    Canvas canvas;
-
-    Actor channels[8];
-
-    Color palette[256];
-
     uint stack;
     uint8 memory[MEMORY_SIZE];
 
@@ -76,12 +70,6 @@ class DoomInDoom : Actor {
         lumps.Append(flatLumps);
         lumps.Push(Wads.CheckNumForName("F_END", Wads.GlobalNamespace));
 
-        canvas = TexMan.GetCanvas("DOOMSCRN");
-
-        for (i = 0; i < 8; i++) {
-            channels[i] = Actor.Spawn('DoomSFX', pos);
-        }
-
         LoadFuncPtrs();
     }
 
@@ -134,121 +122,8 @@ class DoomInDoom : Actor {
         return stack;
     }
 
-    // Based on JagDoom code, as we don't have 64-bit multiply in ZScript.
-    uint func_FixedMul(int a, int b) {
-        let sign = a ^ b;
-        if (a < 0)
-            a = -a;
-
-        if (b < 0)
-            b = -b;
-
-        uint xl = a & 0xffff;
-        uint xh = uint(a) >> 16;
-        uint yl = b & 0xffff;
-        uint yh = uint(b) >> 16;
-
-        uint lo = xl * yl;
-        uint mid = xh * yl + xl * yh;
-        uint hi = xh * yh;
-
-        uint last = lo;
-        lo += mid << 16;
-        hi += mid >> 16;
-
-        if (lo < last) ++hi;
-
-        if (sign < 0) {
-            hi = -hi;
-            if (lo) --hi;
-            lo = -lo;
-        }
-
-        return (hi << 16) | (lo >> 16);
-    }
-
-    // Based on JagDoom code, as we don't have 64-bit divide in ZScript.
-    uint func_FixedDiv(int a, int b) {
-        int sign = a ^ b;
-        uint aa, bb;
-
-        if (a < 0) {
-            aa = -a;
-        } else {
-            aa = a;
-        }
-
-        if (b < 0) {
-            bb = -b;
-        } else {
-            bb = b;
-        }
-
-        if ((aa >> 14) >= bb) {
-            return sign < 0 ? 0x80000000 : 0x7fffffff;
-        }
-
-        uint bit = 0x10000;
-        while (aa > bb) {
-            bb <<= 1;
-            bit <<= 1;
-        }
-
-        uint c = 0;
-
-        do {
-            if (aa >= bb) {
-                aa -= bb;
-                c |= bit;
-            }
-            aa <<= 1;
-            bit >>= 1;
-        } while (bit && aa);
-
-        if (sign < 0)
-            c = -c;
-
-        return c;
-    }
-
     void Unreachable() {
         ThrowAbortException("Reached unreachable code");
-    }
-
-    void func_I_RV_EndFrame(uint screen) {
-        for (uint y = 0; y < 200; y++) {
-            for (uint x = 0; x < 320; x++) {
-                canvas.Clear(x, y, x + 1, y + 1, palette[memory[screen++]]);
-            }
-        }
-    }
-
-    void func_I_RV_SetPalette(uint addr) {
-        for (uint i = 0; i < 256; i++) {
-            let r = memory[addr++];
-            let g = memory[addr++];
-            let b = memory[addr++];
-            palette[i] = Color(r, g, b);
-        }
-    }
-
-    uint func_I_RV_NextEvent(uint ev) {
-        if (events.Size() != 0) {
-            let event = events[0];
-            events.Delete(0);
-
-            Store32(ev, event.type);
-            ev += 4;
-            Store32(ev, event.data1);
-            ev += 4;
-            Store32(ev, event.data2);
-            ev += 4;
-            Store32(ev, event.data3);
-
-            return 1;
-        } else {
-            return 0;
-        }
     }
 
     uint func_I_RV_GetNumLumps() {
@@ -309,32 +184,15 @@ class DoomInDoom : Actor {
         // TODO
     }
 
-    void func_I_RV_SetMusic(uint name, uint looping) {
-        String str = "d_";
-        while (memory[name])
-            str = String.Format("%s%c", str, memory[name++]);
-        S_ChangeMusic(str, 0, !!looping);
-    }
+    String GetString(uint addr) {
+        String result;
+        for (;;) {
+            let c = Load8(addr++);
+            if (!c) break;
 
-    void func_I_RV_PlaySound(uint channel, uint id, uint vol, uint sep) {
-        let c = channels[channel];
-        c.SetOrigin((pos.x + 160.0 * ((sep - 127.0) / 254.0), pos.y, pos.z), true);
-        c.A_StartSound(S_sfx.names[id], CHAN_AUTO, CHANF_DEFAULT, vol / 127.0);
-    }
-
-    void func_I_RV_UpdateSound(uint channel, uint vol, uint sep) {
-        let c = channels[channel];
-        c.SetOrigin((pos.x + 160.0 * ((sep - 127.0) / 254.0), pos.y, pos.z), true);
-    }
-
-    void func_I_RV_StopSound(uint channel) {
-        let c = channels[channel];
-        c.A_StopSound();
-    }
-
-    uint func_I_RV_SoundIsPlaying(uint channel) {
-        let c = channels[channel];
-        return !!c.IsActorPlayingSound(-1);
+            result.AppendCharacter(c);
+        }
+        return result;
     }
 
     void func_I_RV_Quit() {

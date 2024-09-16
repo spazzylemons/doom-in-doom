@@ -33,14 +33,6 @@ typedef struct sfxinfo_struct	sfxinfo_t;
 
 struct sfxinfo_struct
 {
-    // tag name, used for hexen.
-    const char *tagname;
-
-    // lump name.  If we are running with use_sfx_prefix=true, a
-    // 'DS' (or 'DP' for PC speaker sounds) is prepended to this.
-
-    char name[9];
-
     // Sfx priority
     int priority;
 
@@ -57,16 +49,6 @@ struct sfxinfo_struct
     // can be thrown out (if 0, then decrement, if -1,
     // then throw out, if > 0, then it is in use)
     int usefulness;
-
-    // lump number of sfx
-    int lumpnum;
-
-    // Maximum number of channels that the sound can be played on 
-    // (Heretic)
-    int numchannels;
-
-    // data used by the low level code
-    void *driver_data;
 };
 
 //
@@ -100,7 +82,7 @@ void I_ShutdownSound(void);
 int I_GetSfxLumpNum(sfxinfo_t *sfxinfo);
 void I_UpdateSound(void);
 void I_UpdateSoundParams(int channel, int vol, int sep);
-void I_StartSound(sfxinfo_t *sfxinfo, int channel, int vol, int sep, int pitch);
+void I_StartSound(int id, int channel, int vol, int sep, int pitch);
 void I_StopSound(int channel);
 boolean I_SoundIsPlaying(int channel);
 void I_PrecacheSounds(sfxinfo_t *sounds, int num_sounds);
