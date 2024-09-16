@@ -21,7 +21,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "doomdef.h" 
+#include "d_event.h"
+#include "doomdef.h"
 #include "doomkeys.h"
 #include "doomstat.h"
 
@@ -159,17 +160,6 @@ fixed_t         forwardmove[2] = {0x19, 0x32};
 fixed_t         sidemove[2] = {0x18, 0x28}; 
 fixed_t         angleturn[3] = {640, 1280, 320};    // + slow turn 
 
-static int *weapon_keys[] = {
-    &key_weapon1,
-    &key_weapon2,
-    &key_weapon3,
-    &key_weapon4,
-    &key_weapon5,
-    &key_weapon6,
-    &key_weapon7,
-    &key_weapon8
-};
-
 // Set to -1 or +1 to switch to the previous or next weapon.
 
 static int next_weapon = 0;
@@ -192,26 +182,16 @@ static const struct
     { wp_bfg,             wp_bfg }
 };
 
-#define SLOWTURNTICS	6 
- 
-#define NUMKEYS		256 
+#define SLOWTURNTICS	6
 
-static boolean  gamekeydown[NUMKEYS]; 
+static boolean  gamecmddown[CCMD_COUNT];
 static int      turnheld;		// for accelerative turning 
- 
-static boolean  mousearray[MAX_MOUSE_BUTTONS + 1];
-static boolean *mousebuttons = &mousearray[1];  // allow [-1]
 
 // mouse values are used once 
 int             mousex;
 int             mousey;         
 
-static int      dclicktime;
-static boolean  dclickstate;
-static int      dclicks; 
-static int      dclicktime2;
-static boolean  dclickstate2;
-static int      dclicks2;
+static int      dclicks;
  
 static int      savegameslot; 
 static char     savedescription[32]; 
@@ -316,14 +296,13 @@ static int G_NextWeapon(int direction)
 //
 // G_BuildTiccmd
 // Builds a ticcmd from all of the available inputs
-// or reads it from the demo buffer. 
+// or reads it from the demo buffer.
 // If recording a demo, write it out 
 // 
 void G_BuildTiccmd (ticcmd_t* cmd, int maketic) 
 { 
     int		i; 
     boolean	strafe;
-    boolean	bstrafe; 
     int		speed;
     int		tspeed; 
     int		forward;
@@ -334,23 +313,19 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     cmd->consistancy = 
 	consistancy[consoleplayer][maketic%BACKUPTICS]; 
  
-    strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe]; 
+    strafe = gamecmddown[CCMD_STRAFE];
 
     // fraggle: support the old "joyb_speed = 31" hack which
     // allowed an autorun effect
 
-    speed = key_speed >= NUMKEYS
-         || gamekeydown[key_speed] 
-         || mousebuttons[mousebspeed];
+    speed = gamecmddown[CCMD_SPEED];
  
     forward = side = 0;
     
     // use two stage accelerative turning
     // on the keyboard and joystick
-    if (gamekeydown[key_right]
-	|| gamekeydown[key_left]
-	|| mousebuttons[mousebturnright]
-	|| mousebuttons[mousebturnleft])
+    if (gamecmddown[CCMD_RIGHT]
+	|| gamecmddown[CCMD_LEFT])
 	turnheld += ticdup; 
     else 
 	turnheld = 0; 
@@ -363,12 +338,12 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     // let movement keys cancel each other out
     if (strafe) 
     { 
-	if (gamekeydown[key_right] || mousebuttons[mousebturnright])
+	if (gamecmddown[CCMD_RIGHT])
 	{
 	    // fprintf(stderr, "strafe right\n");
 	    side += sidemove[speed]; 
 	}
-	if (gamekeydown[key_left] || mousebuttons[mousebturnleft])
+	if (gamecmddown[CCMD_LEFT])
 	{
 	    //	fprintf(stderr, "strafe left\n");
 	    side -= sidemove[speed]; 
@@ -376,31 +351,29 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     } 
     else 
     { 
-	if (gamekeydown[key_right] || mousebuttons[mousebturnright])
+	if (gamecmddown[CCMD_RIGHT])
 	    cmd->angleturn -= angleturn[tspeed]; 
-	if (gamekeydown[key_left] || mousebuttons[mousebturnleft])
+	if (gamecmddown[CCMD_LEFT])
 	    cmd->angleturn += angleturn[tspeed]; 
     } 
  
-    if (gamekeydown[key_up]) 
+    if (gamecmddown[CCMD_FORWARD])
     {
 	// fprintf(stderr, "up\n");
 	forward += forwardmove[speed]; 
     }
-    if (gamekeydown[key_down]) 
+    if (gamecmddown[CCMD_BACK])
     {
 	// fprintf(stderr, "down\n");
 	forward -= forwardmove[speed]; 
     }
 
-    if (gamekeydown[key_strafeleft]
-     || mousebuttons[mousebstrafeleft])
+    if (gamecmddown[CCMD_MOVELEFT])
     {
         side -= sidemove[speed];
     }
 
-    if (gamekeydown[key_straferight]
-     || mousebuttons[mousebstraferight])
+    if (gamecmddown[CCMD_MOVERIGHT])
     {
         side += sidemove[speed]; 
     }
@@ -408,11 +381,10 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     // buttons
     cmd->chatchar = HU_dequeueChatChar(); 
  
-    if (gamekeydown[key_fire] || mousebuttons[mousebfire]) 
+    if (gamecmddown[CCMD_ATTACK])
 	cmd->buttons |= BT_ATTACK; 
  
-    if (gamekeydown[key_use]
-     || mousebuttons[mousebuse])
+    if (gamecmddown[CCMD_USE])
     { 
 	cmd->buttons |= BT_USE;
 	// clear double clicks if hit use button 
@@ -433,11 +405,9 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     {
         // Check weapon keys.
 
-        for (i=0; i<arrlen(weapon_keys); ++i)
+        for (i=0; i<8; ++i)
         {
-            int key = *weapon_keys[i];
-
-            if (gamekeydown[key])
+            if (gamecmddown[CCMD_SLOT_1 + i])
             {
                 cmd->buttons |= BT_CHANGE;
                 cmd->buttons |= i<<BT_WEAPONSHIFT;
@@ -447,69 +417,6 @@ void G_BuildTiccmd (ticcmd_t* cmd, int maketic)
     }
 
     next_weapon = 0;
-
-    // mouse
-    if (mousebuttons[mousebforward]) 
-    {
-	forward += forwardmove[speed];
-    }
-    if (mousebuttons[mousebbackward])
-    {
-        forward -= forwardmove[speed];
-    }
-
-    if (dclick_use)
-    {
-        // forward double click
-        if (mousebuttons[mousebforward] != dclickstate && dclicktime > 1 ) 
-        { 
-            dclickstate = mousebuttons[mousebforward]; 
-            if (dclickstate) 
-                dclicks++; 
-            if (dclicks == 2) 
-            { 
-                cmd->buttons |= BT_USE; 
-                dclicks = 0; 
-            } 
-            else 
-                dclicktime = 0; 
-        } 
-        else 
-        { 
-            dclicktime += ticdup; 
-            if (dclicktime > 20) 
-            { 
-                dclicks = 0; 
-                dclickstate = 0; 
-            } 
-        }
-        
-        // strafe double click
-        bstrafe =
-            mousebuttons[mousebstrafe]; 
-        if (bstrafe != dclickstate2 && dclicktime2 > 1 ) 
-        { 
-            dclickstate2 = bstrafe; 
-            if (dclickstate2) 
-                dclicks2++; 
-            if (dclicks2 == 2) 
-            { 
-                cmd->buttons |= BT_USE; 
-                dclicks2 = 0; 
-            } 
-            else 
-                dclicktime2 = 0; 
-        } 
-        else 
-        { 
-            dclicktime2 += ticdup; 
-            if (dclicktime2 > 20) 
-            { 
-                dclicks2 = 0; 
-                dclickstate2 = 0; 
-            } 
-        } 
-    }
 
     forward += mousey; 
 
@@ -636,40 +543,13 @@ void G_DoLoadLevel (void)
     
     // clear cmd building stuff
 
-    memset (gamekeydown, 0, sizeof(gamekeydown));
+    memset (gamecmddown, 0, sizeof(gamecmddown));
     mousex = mousey = 0;
     sendpause = sendsave = paused = false;
-    memset(mousearray, 0, sizeof(mousearray));
 
     if (testcontrols)
     {
         players[consoleplayer].message = "Press escape to quit.";
-    }
-} 
-
-static void SetMouseButtons(unsigned int buttons_mask)
-{
-    int i;
-
-    for (i=0; i<MAX_MOUSE_BUTTONS; ++i)
-    {
-        unsigned int button_on = (buttons_mask & (1 << i)) != 0;
-
-        // Detect button press:
-
-        if (!mousebuttons[i] && button_on)
-        {
-            if (i == mousebprevweapon)
-            {
-                next_weapon = -1;
-            }
-            else if (i == mousebnextweapon)
-            {
-                next_weapon = 1;
-            }
-        }
-
-	mousebuttons[i] = button_on;
     }
 }
 
@@ -680,8 +560,8 @@ static void SetMouseButtons(unsigned int buttons_mask)
 boolean G_Responder (event_t* ev) 
 { 
     // allow spy mode changes even during the demo
-    if (gamestate == GS_LEVEL && ev->type == ev_keydown 
-     && ev->data1 == key_spy && (singledemo || !deathmatch) )
+    if (gamestate == GS_LEVEL && ev->type == ev_buttondown
+     && ev->data1 == CCMD_SPYNEXT && (singledemo || !deathmatch) )
     {
 	// spy mode 
 	do 
@@ -698,7 +578,7 @@ boolean G_Responder (event_t* ev)
 	(demoplayback || gamestate == GS_DEMOSCREEN) 
 	) 
     { 
-	if (ev->type == ev_keydown ||  
+	if (ev->type == ev_keydown || ev->type == ev_buttondown ||
 	    (ev->type == ev_mouse && ev->data1) ) 
 	{ 
 	    M_StartControlPanel (); 
@@ -744,11 +624,11 @@ boolean G_Responder (event_t* ev)
     // If the next/previous weapon keys are pressed, set the next_weapon
     // variable to change weapons when the next ticcmd is generated.
 
-    if (ev->type == ev_keydown && ev->data1 == key_prevweapon)
+    if (ev->type == ev_buttondown && ev->data1 == CCMD_WEAPPREV)
     {
         next_weapon = -1;
     }
-    else if (ev->type == ev_keydown && ev->data1 == key_nextweapon)
+    else if (ev->type == ev_buttondown && ev->data1 == CCMD_WEAPNEXT)
     {
         next_weapon = 1;
     }
@@ -760,24 +640,27 @@ boolean G_Responder (event_t* ev)
 	{ 
 	    sendpause = true; 
 	}
-        else if (ev->data1 <NUMKEYS) 
-        {
-	    gamekeydown[ev->data1] = true; 
-        }
 
 	return true;    // eat key down events 
  
       case ev_keyup: 
-	if (ev->data1 <NUMKEYS) 
-	    gamekeydown[ev->data1] = false; 
 	return false;   // always let key up events filter down 
 		 
       case ev_mouse: 
-        SetMouseButtons(ev->data1);
 	mousex = ev->data2*(mouseSensitivity+5)/10; 
 	mousey = ev->data3*(mouseSensitivity+5)/10; 
 	return true;    // eat events 
- 
+
+      case ev_buttondown:
+          if (ev->data1 < CCMD_COUNT)
+              gamecmddown[ev->data1] = true;
+        return true;
+
+      case ev_buttonup:
+          if (ev->data1 < CCMD_COUNT)
+              gamecmddown[ev->data1] = false;
+        return true;
+
       default: 
 	break; 
     } 
@@ -1863,8 +1746,9 @@ void G_WriteDemoTiccmd (ticcmd_t* cmd)
 { 
     byte *demo_start;
 
-    if (gamekeydown[key_demo_quit])           // press q to end demo recording 
-	G_CheckDemoStatus (); 
+    // TODO
+    // if (gamekeydown[key_demo_quit])           // press q to end demo recording
+	// G_CheckDemoStatus ();
 
     demo_start = demo_p;
 

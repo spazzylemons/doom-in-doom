@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 
+#include "d_event.h"
 #include "deh_main.h"
 
 #include "z_zone.h"
@@ -603,55 +604,55 @@ AM_Responder
 
     if (!automapactive)
     {
-	if (ev->type == ev_keydown && ev->data1 == key_map_toggle)
+	if (ev->type == ev_buttondown && ev->data1 == CCMD_TOGGLEMAP)
 	{
 	    AM_Start ();
 	    viewactive = false;
 	    rc = true;
 	}
     }
-    else if (ev->type == ev_keydown)
+    else if (ev->type == ev_buttondown)
     {
 	rc = true;
         key = ev->data1;
 
-        if (key == key_map_east)          // pan right
+        if (key == CCMD_AM_PANRIGHT)          // pan right
         {
             if (!followplayer) m_paninc.x = FTOM(F_PANINC);
             else rc = false;
         }
-        else if (key == key_map_west)     // pan left
+        else if (key == CCMD_AM_PANLEFT)     // pan left
         {
             if (!followplayer) m_paninc.x = -FTOM(F_PANINC);
             else rc = false;
         }
-        else if (key == key_map_north)    // pan up
+        else if (key == CCMD_AM_PANUP)    // pan up
         {
             if (!followplayer) m_paninc.y = FTOM(F_PANINC);
             else rc = false;
         }
-        else if (key == key_map_south)    // pan down
+        else if (key == CCMD_AM_PANDOWN)    // pan down
         {
             if (!followplayer) m_paninc.y = -FTOM(F_PANINC);
             else rc = false;
         }
-        else if (key == key_map_zoomout)  // zoom out
+        else if (key == CCMD_AM_ZOOMOUT)  // zoom out
         {
             mtof_zoommul = M_ZOOMOUT;
             ftom_zoommul = M_ZOOMIN;
         }
-        else if (key == key_map_zoomin)   // zoom in
+        else if (key == CCMD_AM_ZOOMIN)   // zoom in
         {
             mtof_zoommul = M_ZOOMIN;
             ftom_zoommul = M_ZOOMOUT;
         }
-        else if (key == key_map_toggle)
+        else if (key == CCMD_TOGGLEMAP)
         {
             bigstate = 0;
             viewactive = true;
             AM_Stop ();
         }
-        else if (key == key_map_maxzoom)
+        else if (key == CCMD_AM_GOBIG)
         {
             bigstate = !bigstate;
             if (bigstate)
@@ -661,7 +662,7 @@ AM_Responder
             }
             else AM_restoreScaleAndLoc();
         }
-        else if (key == key_map_follow)
+        else if (key == CCMD_AM_TOGGLEFOLLOW)
         {
             followplayer = !followplayer;
             f_oldloc.x = INT_MAX;
@@ -670,7 +671,7 @@ AM_Responder
             else
                 plr->message = DEH_String(AMSTR_FOLLOWOFF);
         }
-        else if (key == key_map_grid)
+        else if (key == CCMD_AM_TOGGLEGRID)
         {
             grid = !grid;
             if (grid)
@@ -678,14 +679,14 @@ AM_Responder
             else
                 plr->message = DEH_String(AMSTR_GRIDOFF);
         }
-        else if (key == key_map_mark)
+        else if (key == CCMD_AM_SETMARK)
         {
             M_snprintf(buffer, sizeof(buffer), "%s %d",
                        DEH_String(AMSTR_MARKEDSPOT), markpointnum);
             plr->message = buffer;
             AM_addMark();
         }
-        else if (key == key_map_clearmark)
+        else if (key == CCMD_AM_CLEARMARKS)
         {
             AM_clearMarks();
             plr->message = DEH_String(AMSTR_MARKSCLEARED);
@@ -702,28 +703,28 @@ AM_Responder
             cheating = (cheating + 1) % 3;
         }
     }
-    else if (ev->type == ev_keyup)
+    else if (ev->type == ev_buttonup)
     {
         rc = false;
         key = ev->data1;
 
-        if (key == key_map_east)
+        if (key == CCMD_AM_PANRIGHT)
         {
             if (!followplayer) m_paninc.x = 0;
         }
-        else if (key == key_map_west)
+        else if (key == CCMD_AM_PANLEFT)
         {
             if (!followplayer) m_paninc.x = 0;
         }
-        else if (key == key_map_north)
+        else if (key == CCMD_AM_PANUP)
         {
             if (!followplayer) m_paninc.y = 0;
         }
-        else if (key == key_map_south)
+        else if (key == CCMD_AM_PANDOWN)
         {
             if (!followplayer) m_paninc.y = 0;
         }
-        else if (key == key_map_zoomout || key == key_map_zoomin)
+        else if (key == CCMD_AM_ZOOMOUT || key == CCMD_AM_ZOOMIN)
         {
             mtof_zoommul = FRACUNIT;
             ftom_zoommul = FRACUNIT;

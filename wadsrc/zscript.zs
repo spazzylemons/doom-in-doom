@@ -13,6 +13,8 @@ version "4.12.2"
 #include "DoomInDoom/code.zs"
 
 class InputListener : EventHandler {
+    Map<String, int> cCmdMapping;
+
     static clearscope int RemapScancode(InputEvent e) {
         if (e.keyChar != 0) {
             return e.keyChar;
@@ -66,6 +68,68 @@ class InputListener : EventHandler {
         }
     }
 
+    clearscope int, int GetCCmdType(InputEvent e) {
+        int c1, c2;
+        bool ok;
+
+        // Try regular bindings, followed by automap bindings.
+        [c1, ok] = cCmdMapping.CheckValue(bindings.GetBinding(e.KeyScan));
+        if (!ok) c1 = -1;
+        [c2, ok] = cCmdMapping.CheckValue(automapBindings.GetBinding(e.KeyScan));
+        if (!ok) c2 = -1;
+
+        return c1, c2;
+    }
+
+    override void OnRegister() {
+        cCmdMapping.Insert("+attack",         CCMD_ATTACK);
+        cCmdMapping.Insert("+use",            CCMD_USE);
+        cCmdMapping.Insert("+forward",        CCMD_FORWARD);
+        cCmdMapping.Insert("+back",           CCMD_BACK);
+        cCmdMapping.Insert("+moveleft",       CCMD_MOVELEFT);
+        cCmdMapping.Insert("+moveright",      CCMD_MOVERIGHT);
+        cCmdMapping.Insert("+left",           CCMD_LEFT);
+        cCmdMapping.Insert("+right",          CCMD_RIGHT);
+        cCmdMapping.Insert("+speed",          CCMD_SPEED);
+        cCmdMapping.Insert("+strafe",         CCMD_STRAFE);
+        cCmdMapping.Insert("weapnext",        CCMD_WEAPNEXT);
+        cCmdMapping.Insert("weapprev",        CCMD_WEAPPREV);
+        cCmdMapping.Insert("slot 1",          CCMD_SLOT_1);
+        cCmdMapping.Insert("slot 2",          CCMD_SLOT_2);
+        cCmdMapping.Insert("slot 3",          CCMD_SLOT_3);
+        cCmdMapping.Insert("slot 4",          CCMD_SLOT_4);
+        cCmdMapping.Insert("slot 5",          CCMD_SLOT_5);
+        cCmdMapping.Insert("slot 6",          CCMD_SLOT_6);
+        cCmdMapping.Insert("slot 7",          CCMD_SLOT_7);
+        cCmdMapping.Insert("slot 8",          CCMD_SLOT_8);
+        cCmdMapping.Insert("togglemap",       CCMD_TOGGLEMAP);
+        cCmdMapping.Insert("+am_panleft",     CCMD_AM_PANLEFT);
+        cCmdMapping.Insert("+am_panright",    CCMD_AM_PANRIGHT);
+        cCmdMapping.Insert("+am_panup",       CCMD_AM_PANUP);
+        cCmdMapping.Insert("+am_pandown",     CCMD_AM_PANDOWN);
+        cCmdMapping.Insert("+am_zoomin",      CCMD_AM_ZOOMIN);
+        cCmdMapping.Insert("+am_zoomout",     CCMD_AM_ZOOMOUT);
+        cCmdMapping.Insert("am_gobig",        CCMD_AM_GOBIG);
+        cCmdMapping.Insert("am_togglefollow", CCMD_AM_TOGGLEFOLLOW);
+        cCmdMapping.Insert("am_togglegrid",   CCMD_AM_TOGGLEGRID);
+        cCmdMapping.Insert("am_setmark",      CCMD_AM_SETMARK);
+        cCmdMapping.Insert("am_clearmarks",   CCMD_AM_CLEARMARKS);
+        cCmdMapping.Insert("spynext",         CCMD_SPYNEXT);
+        cCmdMapping.Insert("sizeup",          CCMD_SIZEUP);
+        cCmdMapping.Insert("sizedown",        CCMD_SIZEDOWN);
+        cCmdMapping.Insert("menu_main",       CCMD_MENU_MAIN);
+        cCmdMapping.Insert("menu_help",       CCMD_MENU_HELP);
+        cCmdMapping.Insert("menu_save",       CCMD_MENU_SAVE);
+        cCmdMapping.Insert("menu_load",       CCMD_MENU_LOAD);
+        cCmdMapping.Insert("menu_options",    CCMD_MENU_OPTIONS);
+        cCmdMapping.Insert("quicksave",       CCMD_QUICKSAVE);
+        cCmdMapping.Insert("menu_endgame",    CCMD_ENDGAME);
+        cCmdMapping.Insert("togglemessages",  CCMD_TOGGLEMESSAGES);
+        cCmdMapping.Insert("quickload",       CCMD_QUICKLOAD);
+        cCmdMapping.Insert("menu_quit",       CCMD_MENU_QUIT);
+        cCmdMapping.Insert("bumpgamma",       CCMD_BUMPGAMMA);
+    }
+
     override bool InputProcess(InputEvent e) {
         // TODO blocks most inputs, making gzdoom itself barely usable.
         if (e.type == InputEvent.Type_KeyDown) {
@@ -75,11 +139,25 @@ class InputListener : EventHandler {
             let data3 = e.keyChar; // TODO
 
             EventHandler.SendNetworkEvent("doomindoom:keydown", data1, data2, data3);
+
+            let [c1, c2] = GetCCmdType(e);
+            if (c1 >= 0)
+                EventHandler.SendNetworkEvent("doomindoom:buttondown", c1);
+            if (c2 >= 0)
+                EventHandler.SendNetworkEvent("doomindoom:buttondown", c2);
+
             return true;
         } else if (e.type == InputEvent.Type_KeyUp) {
             let data1 = RemapScancode(e);
 
             EventHandler.SendNetworkEvent("doomindoom:keyup", data1);
+
+            let [c1, c2] = GetCCmdType(e);
+            if (c1 >= 0)
+                EventHandler.SendNetworkEvent("doomindoom:buttonup", c1);
+            if (c2 >= 0)
+                EventHandler.SendNetworkEvent("doomindoom:buttonup", c2);
+
             return true;
         } else if (e.type == InputEvent.Type_Mouse) {
             let data1 = 0; // TODO!!
@@ -105,6 +183,10 @@ class InputListener : EventHandler {
             ev.type = ev_keyup;
         } else if (e.Name == "doomindoom:mouse") {
             ev.type = ev_mouse;
+        } else if (e.Name == "doomindoom:buttondown") {
+            ev.type = ev_buttondown;
+        } else if (e.Name == "doomindoom:buttonup") {
+            ev.type = ev_buttonup;
         } else {
             return;
         }

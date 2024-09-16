@@ -22,6 +22,7 @@
 #include <ctype.h>
 
 
+#include "d_event.h"
 #include "doomdef.h"
 #include "doomkeys.h"
 #include "dstrings.h"
@@ -1311,8 +1312,8 @@ boolean M_Responder (event_t* ev)
     if (testcontrols)
     {
         if (ev->type == ev_quit
-         || (ev->type == ev_keydown
-          && (ev->data1 == key_menu_activate || ev->data1 == key_menu_quit)))
+         || (ev->type == ev_buttondown
+          && (ev->data1 == key_menu_activate || ev->data1 == CCMD_MENU_QUIT)))
         {
             I_Quit();
             return true;
@@ -1476,9 +1477,10 @@ boolean M_Responder (event_t* ev)
     }
 
     // F-Keys
-    if (!menuactive)
+    if (!menuactive && ev->type == ev_buttondown)
     {
-	if (key == key_menu_decscreen)      // Screen size down
+        int ccmd = ev->data1;
+	if (ccmd == CCMD_SIZEDOWN)      // Screen size down
         {
 	    if (automapactive || chat_on)
 		return false;
@@ -1486,7 +1488,7 @@ boolean M_Responder (event_t* ev)
 	    S_StartSound(NULL,sfx_stnmov);
 	    return true;
 	}
-        else if (key == key_menu_incscreen) // Screen size up
+        else if (ccmd == CCMD_SIZEUP) // Screen size up
         {
 	    if (automapactive || chat_on)
 		return false;
@@ -1494,7 +1496,7 @@ boolean M_Responder (event_t* ev)
 	    S_StartSound(NULL,sfx_stnmov);
 	    return true;
 	}
-        else if (key == key_menu_help)     // Help key
+        else if (ccmd == CCMD_MENU_HELP)     // Help key
         {
 	    M_StartControlPanel ();
 
@@ -1507,65 +1509,58 @@ boolean M_Responder (event_t* ev)
 	    S_StartSound(NULL,sfx_swtchn);
 	    return true;
 	}
-        else if (key == key_menu_save)     // Save
+        else if (ccmd == CCMD_MENU_SAVE)     // Save
         {
 	    M_StartControlPanel();
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_SaveGame(0);
 	    return true;
         }
-        else if (key == key_menu_load)     // Load
+        else if (ccmd == CCMD_MENU_LOAD)     // Load
         {
 	    M_StartControlPanel();
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_LoadGame(0);
 	    return true;
         }
-        else if (key == key_menu_volume)   // Sound Volume
+        else if (ccmd == CCMD_MENU_OPTIONS)   // Options
         {
 	    M_StartControlPanel ();
-	    currentMenu = &SoundDef;
-	    itemOn = sfx_vol;
-	    S_StartSound(NULL,sfx_swtchn);
-	    return true;
-	}
-        else if (key == key_menu_detail)   // Detail toggle
-        {
-	    M_ChangeDetail(0);
+	    currentMenu = &OptionsDef;
 	    S_StartSound(NULL,sfx_swtchn);
 	    return true;
         }
-        else if (key == key_menu_qsave)    // Quicksave
+        else if (ccmd == CCMD_QUICKSAVE)    // Quicksave
         {
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_QuickSave();
 	    return true;
         }
-        else if (key == key_menu_endgame)  // End game
+        else if (ccmd == CCMD_ENDGAME)  // End game
         {
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_EndGame(0);
 	    return true;
         }
-        else if (key == key_menu_messages) // Toggle messages
+        else if (ccmd == CCMD_TOGGLEMESSAGES) // Toggle messages
         {
 	    M_ChangeMessages(0);
 	    S_StartSound(NULL,sfx_swtchn);
 	    return true;
         }
-        else if (key == key_menu_qload)    // Quickload
+        else if (ccmd == CCMD_QUICKLOAD)    // Quickload
         {
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_QuickLoad();
 	    return true;
         }
-        else if (key == key_menu_quit)     // Quit DOOM
+        else if (ccmd == CCMD_MENU_QUIT)     // Quit DOOM
         {
 	    S_StartSound(NULL,sfx_swtchn);
 	    M_QuitDOOM(0);
 	    return true;
         }
-        else if (key == key_menu_gamma)    // gamma toggle
+        else if (ccmd == CCMD_BUMPGAMMA)    // gamma toggle
         {
 	    usegamma++;
 	    if (usegamma > 4)
