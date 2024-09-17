@@ -34,7 +34,7 @@ int key_multi_msgplayer[8];
 
 // menu keys:
 
-int key_menu_activate  = KEY_ESCAPE;
+int key_menu_activate  = KEY_DEL;
 int key_menu_up        = KEY_UPARROW;
 int key_menu_down      = KEY_DOWNARROW;
 int key_menu_left      = KEY_LEFTARROW;

@@ -81,6 +81,18 @@ extern fixed_t sidemove[2];
 
 extern boolean sendpause;
 
+// New stuff for savegame support in DoomInDoom
+
+void G_SaveLoad(int slot);
+void G_SaveStart(int slot);
+void G_SaveCommit(void);
+
+boolean G_SaveRead(void *out, int length);
+
+void G_WriteSaveByte(byte b);
+unsigned int G_LoadSize(void);
+unsigned int G_SaveSize(void);
+
 
 #endif
 

@@ -36,7 +36,6 @@
 #include "m_misc.h"
 #include "m_menu.h"
 #include "m_random.h"
-#include "i_rvsys.h"
 #include "i_system.h"
 #include "i_timer.h"
 #include "i_input.h"
@@ -558,21 +557,7 @@ void G_DoLoadLevel (void)
 // Get info needed to make ticcmd_ts for the players.
 // 
 boolean G_Responder (event_t* ev) 
-{ 
-    // allow spy mode changes even during the demo
-    if (gamestate == GS_LEVEL && ev->type == ev_buttondown
-     && ev->data1 == CCMD_SPYNEXT && (singledemo || !deathmatch) )
-    {
-	// spy mode 
-	do 
-	{ 
-	    displayplayer++; 
-	    if (displayplayer == MAXPLAYERS) 
-		displayplayer = 0; 
-	} while (!playeringame[displayplayer] && displayplayer != consoleplayer); 
-	return true; 
-    }
-    
+{
     // any other key pops up menu if in demos
     if (gameaction == ga_nothing && !singledemo && 
 	(demoplayback || gamestate == GS_DEMOSCREEN) 
@@ -1379,7 +1364,7 @@ void G_LoadGame (int slot)
 { 
     saveslot = slot;
     gameaction = ga_loadgame; 
-} 
+}
 
 void G_DoLoadGame (void) 
 { 
@@ -1387,16 +1372,12 @@ void G_DoLoadGame (void)
 	 
     gameaction = ga_nothing; 
 
-    if (!I_RV_SaveLoad(saveslot))
-    {
-        I_Error("Could not load savegame");
-    }
+    G_SaveLoad(saveslot);
 
     savegame_error = false;
 
     if (!P_ReadSaveGameHeader())
     {
-        I_RV_SaveClose();
         return;
     }
 
@@ -1415,8 +1396,6 @@ void G_DoLoadGame (void)
  
     if (!P_ReadSaveGameEOF())
 	I_Error ("Bad savegame");
-
-    I_RV_SaveClose();
     
     if (setsizeneeded)
 	R_ExecuteSetViewSize ();
@@ -1443,7 +1422,7 @@ G_SaveGame
 
 void G_DoSaveGame (void) 
 { 
-    I_RV_SaveStart(savegameslot);
+    G_SaveStart(savegameslot);
 
     savegame_error = false;
 
@@ -1456,17 +1435,9 @@ void G_DoSaveGame (void)
 
     P_WriteSaveGameEOF();
 
-    // Enforce the same savegame size limit as in Vanilla Doom,
-    // except if the vanilla_savegame_limit setting is turned off.
-
-    if (vanilla_savegame_limit && I_RV_SaveSize() > SAVEGAMESIZE)
-    {
-        I_Error("Savegame buffer overrun");
-    }
-
     // Finish up, close the savegame file.
 
-    I_RV_SaveCommit();
+    G_SaveCommit();
 
     gameaction = ga_nothing;
     M_StringCopy(savedescription, "", sizeof(savedescription));

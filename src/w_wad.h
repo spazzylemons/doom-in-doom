@@ -47,7 +47,7 @@ struct lumpinfo_s
 };
 
 
-extern lumpinfo_t **lumpinfo;
+extern lumpinfo_t *lumpinfo;
 extern unsigned int numlumps;
 
 void W_Init(void);

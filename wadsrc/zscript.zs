@@ -5,66 +5,29 @@ version "4.12.2"
 
 #include "DoomInDoom/d_event.zs"
 #include "DoomInDoom/doomkeys.zs"
+#include "DoomInDoom/g_game.zs"
 #include "DoomInDoom/i_sound.zs"
 #include "DoomInDoom/i_video.zs"
 #include "DoomInDoom/m_fixed.zs"
 #include "DoomInDoom/sounds.zs"
+#include "DoomInDoom/w_wad.zs"
 
 #include "DoomInDoom/code.zs"
 
 class InputListener : EventHandler {
-    Map<String, int> cCmdMapping;
+    private Map<String, int> cCmdMapping;
+    private Map<int, int> scanCodeMapping;
 
-    static clearscope int RemapScancode(InputEvent e) {
-        if (e.keyChar != 0) {
+    private bool captureInputs;
+    private DoomInDoom did;
+
+    clearscope int RemapScancode(InputEvent e) {
+        if (e.keyChar >= 0x20 && e.keyChar <= 0x7e) {
+            // If character is ASCII, use that.
             return e.keyChar;
         } else {
-            let c = e.keyScan;
-            if (c == InputEvent.Key_Pause) return KEY_PAUSE;
-            if (c == InputEvent.Key_RightArrow) return KEY_RIGHTARROW;
-            if (c == InputEvent.Key_LeftArrow) return KEY_LEFTARROW;
-            if (c == InputEvent.Key_UpArrow) return KEY_UPARROW;
-            if (c == InputEvent.Key_DownArrow) return KEY_DOWNARROW;
-            if (c == InputEvent.Key_Escape) return KEY_ESCAPE;
-            if (c == InputEvent.Key_F1) return KEY_F1;
-            if (c == InputEvent.Key_F2) return KEY_F2;
-            if (c == InputEvent.Key_F3) return KEY_F3;
-            if (c == InputEvent.Key_F4) return KEY_F4;
-            if (c == InputEvent.Key_F5) return KEY_F5;
-            if (c == InputEvent.Key_F6) return KEY_F6;
-            if (c == InputEvent.Key_F7) return KEY_F7;
-            if (c == InputEvent.Key_F8) return KEY_F8;
-            if (c == InputEvent.Key_F9) return KEY_F9;
-            if (c == InputEvent.Key_F10) return KEY_F10;
-            if (c == InputEvent.Key_F11) return KEY_F11;
-            if (c == InputEvent.Key_F12) return KEY_F12;
-            if (c == InputEvent.KEY_kpad_1) return KEYP_1;
-            if (c == InputEvent.KEY_kpad_2) return KEYP_2;
-            if (c == InputEvent.KEY_kpad_3) return KEYP_3;
-            if (c == InputEvent.KEY_kpad_4) return KEYP_4;
-            if (c == InputEvent.KEY_kpad_5) return KEYP_5;
-            if (c == InputEvent.KEY_kpad_6) return KEYP_6;
-            if (c == InputEvent.KEY_kpad_7) return KEYP_7;
-            if (c == InputEvent.KEY_kpad_8) return KEYP_8;
-            if (c == InputEvent.KEY_kpad_9) return KEYP_9;
-            if (c == InputEvent.KEY_kpad_0) return KEYP_0;
-            if (c == InputEvent.KEY_kpad_Minus) return KEYP_MINUS;
-            if (c == InputEvent.KEY_kpad_Plus) return KEYP_PLUS;
-            if (c == InputEvent.KEY_kpad_Period) return KEYP_PERIOD;
-            if (c == InputEvent.Key_Backspace) return KEY_BACKSPACE;
-            if (c == InputEvent.Key_LShift) return KEY_RSHIFT;
-            if (c == InputEvent.Key_LCtrl) return KEY_RCTRL;
-            if (c == InputEvent.Key_LAlt) return KEY_RALT;
-            if (c == InputEvent.Key_RShift) return KEY_RSHIFT;
-            if (c == InputEvent.Key_RCtrl) return KEY_RCTRL;
-            if (c == InputEvent.Key_RAlt) return KEY_RALT;
-            if (c == InputEvent.Key_Ins) return KEY_INS;
-            if (c == InputEvent.Key_Del) return KEY_DEL;
-            if (c == InputEvent.Key_End) return KEY_END;
-            if (c == InputEvent.Key_Home) return KEY_HOME;
-            if (c == InputEvent.Key_PgUp) return KEY_PGUP;
-            if (c == InputEvent.Key_PgDn) return KEY_PGDN;
-            return 0;
+            // Otherwise, use mapping from GZDoom scancode to Doom scancode.
+            return scanCodeMapping.GetIfExists(e.keyScan);
         }
     }
 
@@ -114,7 +77,6 @@ class InputListener : EventHandler {
         cCmdMapping.Insert("am_togglegrid",   CCMD_AM_TOGGLEGRID);
         cCmdMapping.Insert("am_setmark",      CCMD_AM_SETMARK);
         cCmdMapping.Insert("am_clearmarks",   CCMD_AM_CLEARMARKS);
-        cCmdMapping.Insert("spynext",         CCMD_SPYNEXT);
         cCmdMapping.Insert("sizeup",          CCMD_SIZEUP);
         cCmdMapping.Insert("sizedown",        CCMD_SIZEDOWN);
         cCmdMapping.Insert("menu_main",       CCMD_MENU_MAIN);
@@ -128,10 +90,74 @@ class InputListener : EventHandler {
         cCmdMapping.Insert("quickload",       CCMD_QUICKLOAD);
         cCmdMapping.Insert("menu_quit",       CCMD_MENU_QUIT);
         cCmdMapping.Insert("bumpgamma",       CCMD_BUMPGAMMA);
+
+        scanCodeMapping.Insert(InputEvent.Key_Pause,       KEY_PAUSE);
+        scanCodeMapping.Insert(InputEvent.Key_RightArrow,  KEY_RIGHTARROW);
+        scanCodeMapping.Insert(InputEvent.Key_LeftArrow,   KEY_LEFTARROW);
+        scanCodeMapping.Insert(InputEvent.Key_UpArrow,     KEY_UPARROW);
+        scanCodeMapping.Insert(InputEvent.Key_DownArrow,   KEY_DOWNARROW);
+        scanCodeMapping.Insert(InputEvent.Key_Escape,      KEY_ESCAPE);
+        scanCodeMapping.Insert(InputEvent.Key_Enter,       KEY_ENTER);
+        scanCodeMapping.Insert(InputEvent.Key_F1,          KEY_F1);
+        scanCodeMapping.Insert(InputEvent.Key_F2,          KEY_F2);
+        scanCodeMapping.Insert(InputEvent.Key_F3,          KEY_F3);
+        scanCodeMapping.Insert(InputEvent.Key_F4,          KEY_F4);
+        scanCodeMapping.Insert(InputEvent.Key_F5,          KEY_F5);
+        scanCodeMapping.Insert(InputEvent.Key_F6,          KEY_F6);
+        scanCodeMapping.Insert(InputEvent.Key_F7,          KEY_F7);
+        scanCodeMapping.Insert(InputEvent.Key_F8,          KEY_F8);
+        scanCodeMapping.Insert(InputEvent.Key_F9,          KEY_F9);
+        scanCodeMapping.Insert(InputEvent.Key_F10,         KEY_F10);
+        scanCodeMapping.Insert(InputEvent.Key_F11,         KEY_F11);
+        scanCodeMapping.Insert(InputEvent.Key_F12,         KEY_F12);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_1,      KEYP_1);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_2,      KEYP_2);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_3,      KEYP_3);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_4,      KEYP_4);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_5,      KEYP_5);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_6,      KEYP_6);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_7,      KEYP_7);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_8,      KEYP_8);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_9,      KEYP_9);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_0,      KEYP_0);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_Minus,  KEYP_MINUS);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_Plus,   KEYP_PLUS);
+        scanCodeMapping.Insert(InputEvent.KEY_kpad_Period, KEYP_PERIOD);
+        scanCodeMapping.Insert(InputEvent.Key_Backspace,   KEY_BACKSPACE);
+        scanCodeMapping.Insert(InputEvent.Key_LShift,      KEY_RSHIFT);
+        scanCodeMapping.Insert(InputEvent.Key_LCtrl,       KEY_RCTRL);
+        scanCodeMapping.Insert(InputEvent.Key_LAlt,        KEY_RALT);
+        scanCodeMapping.Insert(InputEvent.Key_RShift,      KEY_RSHIFT);
+        scanCodeMapping.Insert(InputEvent.Key_RCtrl,       KEY_RCTRL);
+        scanCodeMapping.Insert(InputEvent.Key_RAlt,        KEY_RALT);
+        scanCodeMapping.Insert(InputEvent.Key_Ins,         KEY_INS);
+        scanCodeMapping.Insert(InputEvent.Key_Del,         KEY_DEL);
+        scanCodeMapping.Insert(InputEvent.Key_End,         KEY_END);
+        scanCodeMapping.Insert(InputEvent.Key_Home,        KEY_HOME);
+        scanCodeMapping.Insert(InputEvent.Key_PgUp,        KEY_PGUP);
+        scanCodeMapping.Insert(InputEvent.Key_PgDn,        KEY_PGDN);
+
+    }
+
+    override void WorldLoaded(WorldEvent e) {
+        let iterator = ThinkerIterator.Create('DoomInDoom');
+        did = DoomInDoom(iterator.Next());
+        captureInputs = false;
     }
 
     override bool InputProcess(InputEvent e) {
-        // TODO blocks most inputs, making gzdoom itself barely usable.
+        if (did == null)
+            return false;
+
+        if (e.type == InputEvent.Type_KeyDown && bindings.GetBinding(e.KeyScan) == "spynext") {
+            EventHandler.SendNetworkEvent("doomindoom:togglecapture");
+            return false;
+        }
+
+        if (!captureInputs) {
+            return false;
+        }
+
         if (e.type == InputEvent.Type_KeyDown) {
             // TODO handle shift for data3.
             let data1 = RemapScancode(e);
@@ -160,7 +186,7 @@ class InputListener : EventHandler {
 
             return true;
         } else if (e.type == InputEvent.Type_Mouse) {
-            let data1 = 0; // TODO!!
+            let data1 = 0;
             let data2 = e.mouseX;
             let data3 = e.mouseY;
 
@@ -175,8 +201,15 @@ class InputListener : EventHandler {
         if (e.IsManual)
             return;
 
-        let ev = new('event_t');
+        if (e.Name == "doomindoom:togglecapture") {
+            captureInputs = !captureInputs;
 
+            let msg = captureInputs ? "Controlling Doom in Doom." : "Controlling GZDoom.";
+            Console.MidPrint(Font.FindFont('BIGFONT'), msg);
+            return;
+        }
+
+        let ev = new('event_t');
         if (e.Name == "doomindoom:keydown") {
             ev.type = ev_keydown;
         } else if (e.Name == "doomindoom:keyup") {
@@ -194,12 +227,6 @@ class InputListener : EventHandler {
         ev.data1 = e.Args[0];
         ev.data2 = e.Args[1];
         ev.data3 = e.Args[2];
-
-        // Find game and forward event.
-        let iterator = ThinkerIterator.Create('DoomInDoom');
-        DoomInDoom d;
-        while ((d = DoomInDoom(iterator.Next()))) {
-            d.AddEvent(ev);
-        }
+        did.AddEvent(ev);
     }
 }

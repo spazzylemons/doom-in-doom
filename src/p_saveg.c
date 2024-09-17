@@ -22,7 +22,6 @@
 
 #include "dstrings.h"
 #include "deh_main.h"
-#include "i_rvsys.h"
 #include "i_system.h"
 #include "z_zone.h"
 #include "p_local.h"
@@ -43,7 +42,7 @@ static byte saveg_read8(void)
 {
     byte result = -1;
 
-    if (I_RV_SaveRead(&result, 1) < 1)
+    if (!G_SaveRead(&result, 1))
     {
         if (!savegame_error)
         {
@@ -59,7 +58,7 @@ static byte saveg_read8(void)
 
 static void saveg_write8(byte value)
 {
-    I_RV_SaveWrite(&value, 1);
+    G_WriteSaveByte(value);
 }
 
 static short saveg_read16(void)
@@ -106,7 +105,7 @@ static void saveg_read_pad(void)
     int padding;
     int i;
 
-    pos = I_RV_SaveSize();
+    pos = G_LoadSize();
 
     padding = (4 - (pos & 3)) & 3;
 
@@ -122,7 +121,7 @@ static void saveg_write_pad(void)
     int padding;
     int i;
 
-    pos = I_RV_SaveSize();
+    pos = G_SaveSize();
 
     padding = (4 - (pos & 3)) & 3;
 

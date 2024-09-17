@@ -815,7 +815,7 @@ P_SetupLevel
 
     lumpnum = W_GetNumForName (lumpname);
 	
-    maplumpinfo = lumpinfo[lumpnum];
+    maplumpinfo = &lumpinfo[lumpnum];
 
     leveltime = 0;
 	

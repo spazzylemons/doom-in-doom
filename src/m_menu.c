@@ -30,7 +30,6 @@
 #include "d_main.h"
 #include "deh_main.h"
 
-#include "i_rvsys.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "i_timer.h"
@@ -499,13 +498,10 @@ void M_ReadSaveStrings(void)
 
     for (i = 0;i < load_end;i++)
     {
-        if (I_RV_SaveLoad(i)) {
-            if (I_RV_SaveRead(&savegamestrings[i][0], SAVESTRINGSIZE) == 1) {
-                LoadMenu[i].status = 1;
-                I_RV_SaveClose();
-                continue;
-            }
-            I_RV_SaveClose();
+        G_SaveLoad(i);
+        if (G_SaveRead(&savegamestrings[i][0], SAVESTRINGSIZE)) {
+            LoadMenu[i].status = 1;
+            continue;
         }
 
         M_StringCopy(savegamestrings[i], EMPTYSTRING, SAVESTRINGSIZE);
@@ -1313,7 +1309,7 @@ boolean M_Responder (event_t* ev)
     {
         if (ev->type == ev_quit
          || (ev->type == ev_buttondown
-          && (ev->data1 == key_menu_activate || ev->data1 == CCMD_MENU_QUIT)))
+          && (ev->data1 == CCMD_MENU_MAIN || ev->data1 == CCMD_MENU_QUIT)))
         {
             I_Quit();
             return true;
@@ -1394,9 +1390,12 @@ boolean M_Responder (event_t* ev)
 	    {
 		key = ev->data1;
 		ch = ev->data2;
-	    }
+	    } else if (ev->type == ev_buttondown) {
+            // random key that doesn't map to anything
+            key = 0xfe;
+        }
 	}
-    
+
     if (key == -1)
 	return false;
 

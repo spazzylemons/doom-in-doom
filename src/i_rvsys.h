@@ -4,18 +4,6 @@
 #include "doomtype.h"
 #include "w_wad.h"
 
-// Get the next event. Returns 1 if event occurred.
-int I_RV_NextEvent(event_t *ev);
-
-// Get the number of lumps.
-int I_RV_GetNumLumps(void);
-
-// Get lump info.
-void I_RV_DumpLumps(lumpinfo_t *lumps);
-
-// Read a lump.
-void I_RV_ReadLump(int lump, void *dest);
-
 // SAVE FILES //
 
 int I_RV_SaveRead(void *data, int size);

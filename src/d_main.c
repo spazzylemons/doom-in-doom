@@ -718,12 +718,12 @@ void D_IdentifyVersion(void)
 
 	for (i=0; i<numlumps; ++i)
 	{
-		if (!strncasecmp(lumpinfo[i]->name, "MAP01", 8))
+		if (!strncasecmp(lumpinfo[i].name, "MAP01", 8))
 		{
 			gamemission = doom2;
 			break;
 		} 
-		else if (!strncasecmp(lumpinfo[i]->name, "E1M1", 8))
+		else if (!strncasecmp(lumpinfo[i].name, "E1M1", 8))
 		{
 			gamemission = doom;
 			break;
@@ -1335,7 +1335,7 @@ void D_DoomMain (void)
 
     for (i = 0; i < numlumps; ++i)
     {
-        if (!strncmp(lumpinfo[i]->name, "DEHACKED", 8))
+        if (!strncmp(lumpinfo[i].name, "DEHACKED", 8))
         {
             DEH_LoadLump(i, false, false);
             loaded++;

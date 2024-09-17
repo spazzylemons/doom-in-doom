@@ -57,7 +57,7 @@ typedef PACKED_STRUCT (
 //
 
 // Location of each lump on disk.
-lumpinfo_t **lumpinfo;
+lumpinfo_t *lumpinfo;
 unsigned int numlumps = 0;
 
 // Hash table for fast lookups
@@ -80,25 +80,19 @@ unsigned int W_LumpNameHash(const char *s)
     return result;
 }
 
+int W_Load(void);
+
+void W_ReadLumps(lumpinfo_t *);
+
 //
 // LUMP BASED ROUTINES.
 //
 
 void W_Init(void)
 {
-    lumpindex_t i;
-    lumpinfo_t *filelumps;
-
-    numlumps = I_RV_GetNumLumps();
-    filelumps = Z_Malloc(numlumps * sizeof(lumpinfo_t), PU_STATIC, NULL);
-    lumpinfo = Z_Malloc(numlumps * sizeof(lumpinfo_t *), PU_STATIC, NULL);
-    I_RV_DumpLumps(filelumps);
-
-    for (i = 0; i < numlumps; ++i)
-    {
-        lumpinfo_t *lump_p = &filelumps[i];
-        lumpinfo[i] = lump_p;
-    }
+    numlumps = W_Load();
+    lumpinfo = Z_Malloc(numlumps * sizeof(lumpinfo_t), PU_STATIC, NULL);
+    W_ReadLumps(lumpinfo);
 }
 
 
@@ -132,9 +126,9 @@ lumpindex_t W_CheckNumForName(const char *name)
 
         hash = W_LumpNameHash(name) % numlumps;
 
-        for (i = lumphash[hash]; i != -1; i = lumpinfo[i]->next)
+        for (i = lumphash[hash]; i != -1; i = lumpinfo[i].next)
         {
-            if (!strncasecmp(lumpinfo[i]->name, name, 8))
+            if (!strncasecmp(lumpinfo[i].name, name, 8))
             {
                 return i;
             }
@@ -148,7 +142,7 @@ lumpindex_t W_CheckNumForName(const char *name)
 
         for (i = numlumps - 1; i >= 0; --i)
         {
-            if (!strncasecmp(lumpinfo[i]->name, name, 8))
+            if (!strncasecmp(lumpinfo[i].name, name, 8))
             {
                 return i;
             }
@@ -193,30 +187,7 @@ int W_LumpLength(lumpindex_t lump)
 	I_Error ("W_LumpLength: %i >= numlumps", lump);
     }
 
-    return lumpinfo[lump]->size;
-}
-
-
-
-//
-// W_ReadLump
-// Loads the lump into the given buffer,
-//  which must be >= W_LumpLength().
-//
-void W_ReadLump(lumpindex_t lump, void *dest)
-{
-    lumpinfo_t *l;
-
-    if (lump >= numlumps)
-    {
-        I_Error ("W_ReadLump: %i >= numlumps", lump);
-    }
-
-    l = lumpinfo[lump];
-
-    V_BeginRead(l->size);
-
-    I_RV_ReadLump(lump, dest);
+    return lumpinfo[lump].size;
 }
 
 
@@ -244,7 +215,7 @@ void *W_CacheLumpNum(lumpindex_t lumpnum, int tag)
 	I_Error ("W_CacheLumpNum: %i >= numlumps", lumpnum);
     }
 
-    lump = lumpinfo[lumpnum];
+    lump = &lumpinfo[lumpnum];
 
     // Get the pointer to return.  If the lump is in a memory-mapped
     // file, we can just return a pointer to within the memory-mapped
@@ -299,7 +270,7 @@ void W_ReleaseLumpNum(lumpindex_t lumpnum)
 	I_Error ("W_ReleaseLumpNum: %i >= numlumps", lumpnum);
     }
 
-    lump = lumpinfo[lumpnum];
+    lump = &lumpinfo[lumpnum];
 
     Z_ChangeTag(lump->cache, PU_CACHE);
 }
@@ -336,11 +307,11 @@ void W_GenerateHashTable(void)
         {
             unsigned int hash;
 
-            hash = W_LumpNameHash(lumpinfo[i]->name) % numlumps;
+            hash = W_LumpNameHash(lumpinfo[i].name) % numlumps;
 
             // Hook into the hash table
 
-            lumpinfo[i]->next = lumphash[hash];
+            lumpinfo[i].next = lumphash[hash];
             lumphash[hash] = i;
         }
     }

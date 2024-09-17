@@ -44,7 +44,6 @@ enum ccmd_t {
     CCMD_AM_SETMARK,
     CCMD_AM_CLEARMARKS,
 
-    CCMD_SPYNEXT,
     CCMD_SIZEUP,
     CCMD_SIZEDOWN,
 
