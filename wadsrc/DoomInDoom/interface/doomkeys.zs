@@ -1,26 +1,21 @@
-//
-// Copyright(C) 1993-1996 Id Software, Inc.
-// Copyright(C) 2005-2014 Simon Howard
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// DESCRIPTION:
-//       Key definitions
-//
+/**
+ * DoomInDoom - Doom compiled to ZScript
+ * Copyright (C) 2024 spazzylemons
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
-//
-// DOOM keyboard definition.
-// This is the stuff configured by Setup.Exe.
-// Most key data are simple ascii (uppercased).
-//
 const KEY_RIGHTARROW = 0xae;
 const KEY_LEFTARROW = 0xac;
 const KEY_UPARROW = 0xad;
@@ -52,8 +47,6 @@ const KEY_RCTRL = (0x80+0x1d);
 const KEY_RALT = (0x80+0x38);
 
 const KEY_LALT = KEY_RALT;
-
-// new keys:
 
 const KEY_CAPSLOCK = (0x80+0x3a);
 const KEY_NUMLOCK = (0x80+0x45);
