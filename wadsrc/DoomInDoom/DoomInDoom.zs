@@ -70,44 +70,6 @@ class DoomInDoom : Actor {
         ThrowAbortException("Reached unreachable code");
     }
 
-    void func_I_RV_ReadLump(uint lump, uint dest) {
-        let data = Wads.ReadLump(lumps[lump]);
-        for (uint i = 0; i < data.Length(); i++) {
-            memory[dest++] = data.ByteAt(i);
-        }
-    }
-
-    uint func_I_RV_SaveRead(uint data, uint size) {
-        // TODO
-        return 0;
-    }
-
-    void func_I_RV_SaveWrite(uint data, uint size) {
-        // TODO
-    }
-
-    uint func_I_RV_SaveSize() {
-        // TODO
-        return 0;
-    }
-
-    uint func_I_RV_SaveLoad(uint id) {
-        // TODO
-        return 0;
-    }
-
-    void func_I_RV_SaveStart(uint id) {
-        // TODO
-    }
-
-    void func_I_RV_SaveCommit() {
-        // TODO
-    }
-
-    void func_I_RV_SaveClose() {
-        // TODO
-    }
-
     String GetString(uint addr) {
         String result;
         for (;;) {
@@ -119,16 +81,12 @@ class DoomInDoom : Actor {
         return result;
     }
 
-    void func_I_RV_Quit() {
-        ThrowAbortException("Quit");
-    }
-
     void func__putchar(uint c) {
         if (c == 10) {
             Console.Printf("%s", linebuffer);
             linebuffer = "";
         } else if (c >= 0x20 && c <= 0x7e) {
-            linebuffer = String.Format("%s%c", linebuffer, c);
+            linebuffer.AppendCharacter(c);
         }
     }
 
@@ -139,16 +97,17 @@ class DoomInDoom : Actor {
     void Reset() {
         let rom = Wads.ReadLump(Wads.CheckNumForFullName("DoomInDoom/data.bin"));
         uint i;
-        for (i = 0; i < MEMORY_SIZE; i++) {
-            memory[i] = 0;
-        }
-        for (i = 0; i < rom.Length(); i++) {
-            Store8(i + MIN_VALID_MEMORY, rom.ByteAt(i));
-        }
 
-        stack = MEMORY_SIZE;
+        // Zero out memory.
+        for (i = 0; i < MEMORY_SIZE; i++)
+            Store8(i, 0);
+
+        // Load data segment into memory.
+        for (i = 0; i < rom.Length(); i++)
+            Store8(i + MIN_VALID_MEMORY, rom.ByteAt(i));
 
         // Start it up!
+        stack = MEMORY_SIZE;
         func_D_DoomMain();
     }
 
@@ -176,5 +135,11 @@ class DoomInDoom : Actor {
             TNT1 A 0 Reset;
             TNT1 A 1 Run;
             wait;
+        Death:
+            TNT1 A 105;
+            TNT1 A -1 {
+                Level.ExitLevel(0, false);
+            }
+            stop;
 	}
 }

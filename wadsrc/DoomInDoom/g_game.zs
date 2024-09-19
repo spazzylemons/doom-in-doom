@@ -17,7 +17,7 @@ extend class DoomInDoom {
     }
 
     uint func_G_SaveRead(uint dest, uint len) {
-        if (saveReadIndex + len > savegames[saveSlot].Size()) {
+        if (saveReadIndex + len > uint(savegames[saveSlot].Size())) {
             return 0;
         }
 

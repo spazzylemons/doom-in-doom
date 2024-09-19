@@ -21,49 +21,16 @@
 #include "config.h"
 #include "doomtype.h"
 
-#include "i_rvsys.h"
 #include "i_sound.h"
 #include "i_video.h"
 #include "m_argv.h"
 #include "m_config.h"
 #include "sounds.h"
 
-
-// Sound sample rate to use for digital output (Hz)
-
-int snd_samplerate = 44100;
-
-// Maximum number of bytes to dedicate to allocated sound effects.
-// (Default: 64MB)
-
-int snd_cachesize = 64 * 1024 * 1024;
-
-// Config variable that controls the sound buffer size.
-// We default to 28ms (1000 / 35fps = 1 buffer per tic).
-
-int snd_maxslicetime_ms = 28;
-
-// External command to invoke to play back music.
-
-char *snd_musiccmd = "";
-
 // Whether to vary the pitch of sound effects
 // Each game will set the default differently
 
 int snd_pitchshift = -1;
-
-int snd_musicdevice = SNDDEVICE_SB;
-int snd_sfxdevice = SNDDEVICE_SB;
-
-
-// DOS-specific options: These are unused but should be maintained
-// so that the config file can be shared between chocolate
-// doom and doom.exe
-
-static int snd_sbport = 0;
-static int snd_sbirq = 0;
-static int snd_sbdma = 0;
-static int snd_mport = 0;
 
 //
 // Initializes sound stuff, including volume
@@ -115,16 +82,6 @@ void I_StopSong(void)
 
 void I_BindSoundVariables(void)
 {
-    M_BindIntVariable("snd_musicdevice",         &snd_musicdevice);
-    M_BindIntVariable("snd_sfxdevice",           &snd_sfxdevice);
-    M_BindIntVariable("snd_sbport",              &snd_sbport);
-    M_BindIntVariable("snd_sbirq",               &snd_sbirq);
-    M_BindIntVariable("snd_sbdma",               &snd_sbdma);
-    M_BindIntVariable("snd_mport",               &snd_mport);
-    M_BindIntVariable("snd_maxslicetime_ms",     &snd_maxslicetime_ms);
-    M_BindStringVariable("snd_musiccmd",         &snd_musiccmd);
-    M_BindIntVariable("snd_samplerate",          &snd_samplerate);
-    M_BindIntVariable("snd_cachesize",           &snd_cachesize);
     M_BindIntVariable("snd_pitchshift",          &snd_pitchshift);
 }
 

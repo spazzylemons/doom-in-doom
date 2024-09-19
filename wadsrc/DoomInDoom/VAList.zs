@@ -1,7 +1,6 @@
 class VAList play {
     Array<uint> values;
     DoomInDoom d;
-    uint testb;
 
     static VAList Create(DoomInDoom d) {
         let result = new('VAList');
@@ -20,13 +19,9 @@ class VAList play {
             d.Store32(block + (i << 2), values[i]);
         }
         d.Store32(ptr, block);
-        testb = block;
     }
 
     void End(uint ptr) {
         d.Store32(ptr, 0);
-        if (d.stack > testb) {
-            ThrowAbortException("STACKFAIL");
-        }
     }
 }

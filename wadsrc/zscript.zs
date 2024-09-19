@@ -7,6 +7,7 @@ version "4.12.2"
 #include "DoomInDoom/doomkeys.zs"
 #include "DoomInDoom/g_game.zs"
 #include "DoomInDoom/i_sound.zs"
+#include "DoomInDoom/i_system.zs"
 #include "DoomInDoom/i_video.zs"
 #include "DoomInDoom/m_fixed.zs"
 #include "DoomInDoom/sounds.zs"
@@ -142,7 +143,7 @@ class InputListener : EventHandler {
     override void WorldLoaded(WorldEvent e) {
         let iterator = ThinkerIterator.Create('DoomInDoom');
         did = DoomInDoom(iterator.Next());
-        captureInputs = false;
+        captureInputs = true;
     }
 
     override bool InputProcess(InputEvent e) {

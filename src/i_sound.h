@@ -61,22 +61,6 @@ typedef struct
 
 } musicinfo_t;
 
-typedef enum 
-{
-    SNDDEVICE_NONE = 0,
-    SNDDEVICE_PCSPEAKER = 1,
-    SNDDEVICE_ADLIB = 2,
-    SNDDEVICE_SB = 3,
-    SNDDEVICE_PAS = 4,
-    SNDDEVICE_GUS = 5,
-    SNDDEVICE_WAVEBLASTER = 6,
-    SNDDEVICE_SOUNDCANVAS = 7,
-    SNDDEVICE_GENMIDI = 8,
-    SNDDEVICE_AWE32 = 9,
-    SNDDEVICE_CD = 10,
-    SNDDEVICE_FSYNTH = 11,
-} snddevice_t;
-
 void I_InitSound(GameMission_t mission);
 void I_ShutdownSound(void);
 int I_GetSfxLumpNum(sfxinfo_t *sfxinfo);
@@ -95,14 +79,7 @@ void I_ResumeSong(void);
 void I_PlaySong(const char *name, boolean looping);
 void I_StopSong(void);
 
-extern int snd_sfxdevice;
-extern int snd_musicdevice;
-extern int snd_samplerate;
-extern int snd_cachesize;
-extern int snd_maxslicetime_ms;
-extern char *snd_musiccmd;
 extern int snd_pitchshift;
-extern int use_libsamplerate;
 
 void I_BindSoundVariables(void);
 

@@ -123,6 +123,9 @@ char	endstring[160];
 
 static boolean opldev;
 
+// Hack for making quit behave like original Doom in DoomInDoom.
+static boolean quithack;
+
 //
 // MENU TYPEDEFS
 //
@@ -1046,6 +1049,7 @@ void M_QuitResponse(int key)
 	else
 	    S_StartSound(NULL,quitsounds[(gametic>>2)&7]);
     }
+    quithack = true;
     I_Quit ();
 }
 
@@ -1470,8 +1474,13 @@ boolean M_Responder (event_t* ev)
 	if (messageRoutine)
 	    messageRoutine(key);
 
-	menuactive = false;
-	S_StartSound(NULL,sfx_swtchx);
+    menuactive = false;
+    if (quithack) {
+        messageToPrint = 1;
+    } else {
+        S_StartSound(NULL,sfx_swtchx);
+    }
+
 	return true;
     }
 

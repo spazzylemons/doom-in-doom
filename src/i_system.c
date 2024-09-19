@@ -132,6 +132,8 @@ void I_BindVariables(void)
 }
 */
 
+void I_Exit(void);
+
 //
 // I_Quit
 //
@@ -141,8 +143,8 @@ void I_Quit (void)
     atexit_listentry_t *entry;
 
     // Run through all exit functions
- 
-    entry = exit_funcs; 
+
+    entry = exit_funcs;
 
     while (entry != NULL)
     {
@@ -150,61 +152,7 @@ void I_Quit (void)
         entry = entry->next;
     }
 
-    exit(0);
-}
-
-
-
-//
-// I_Error
-//
-
-static boolean already_quitting = false;
-
-void I_Error (const char *error, ...)
-{
-    char msgbuf[512];
-    va_list argptr;
-    atexit_listentry_t *entry;
-
-    if (already_quitting)
-    {
-        printf("Warning: recursive call to I_Error detected.\n");
-        exit(-1);
-    }
-    else
-    {
-        already_quitting = true;
-    }
-
-    // Message first.
-    va_start(argptr, error);
-    //fprintf(stderr, "\nError: ");
-    vprintf(error, argptr);
-    printf("\n\n");
-    va_end(argptr);
-
-    // Write a copy of the message into buffer.
-    va_start(argptr, error);
-    memset(msgbuf, 0, sizeof(msgbuf));
-    M_vsnprintf(msgbuf, sizeof(msgbuf), error, argptr);
-    va_end(argptr);
-
-    // Shutdown. Here might be other errors.
-
-    entry = exit_funcs;
-
-    while (entry != NULL)
-    {
-        if (entry->run_on_error)
-        {
-            entry->func();
-        }
-
-        entry = entry->next;
-    }
-
-    exit(-1);
+    I_Exit();
 }
 
 //

@@ -26,7 +26,6 @@
 
 #include "doomtype.h"
 
-#include "i_rvsys.h"
 #include "i_swap.h"
 #include "i_system.h"
 #include "i_video.h"
