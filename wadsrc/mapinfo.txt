@@ -1,0 +1,14 @@
+clearepisodes
+episode computer {
+    name = "Doom in Doom"
+}
+
+map computer "Doom in Doom" {
+    levelnum = 1
+    cluster = 1
+    eventHandlers = "DoomInDoomInputListener", "DoomInDoomHelpScreen"
+}
+
+doomednums {
+	3991 = "DoomInDoom"
+}

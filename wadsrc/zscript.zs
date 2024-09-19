@@ -15,7 +15,9 @@ version "4.12.2"
 
 #include "DoomInDoom/code.zs"
 
-class InputListener : EventHandler {
+#include "DoomInDoom/HelpScreen.zs"
+
+class DoomInDoomInputListener : EventHandler {
     private Map<String, int> cCmdMapping;
     private Map<int, int> scanCodeMapping;
 
