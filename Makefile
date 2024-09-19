@@ -59,7 +59,6 @@ OBJS := \
     $(O)/m_argv.bc \
     $(O)/m_bbox.bc \
     $(O)/m_cheat.bc \
-    $(O)/m_config.bc \
     $(O)/m_controls.bc \
     $(O)/memio.bc \
     $(O)/m_menu.bc \

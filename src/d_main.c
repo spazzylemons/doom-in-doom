@@ -43,7 +43,6 @@
 #include "f_wipe.h"
 
 #include "m_argv.h"
-#include "m_config.h"
 #include "m_controls.h"
 #include "m_misc.h"
 #include "m_menu.h"
@@ -305,43 +304,16 @@ void D_BindVariables(void)
 {
     int i;
 
-    M_ApplyPlatformDefaults();
-
-    I_BindVideoVariables();
-    I_BindSoundVariables();
-
-    M_BindBaseControls();
-    M_BindWeaponControls();
-    M_BindMapControls();
-    M_BindMenuControls();
-    M_BindChatControls(MAXPLAYERS);
-
     key_multi_msgplayer[0] = HUSTR_KEYGREEN;
     key_multi_msgplayer[1] = HUSTR_KEYINDIGO;
     key_multi_msgplayer[2] = HUSTR_KEYBROWN;
     key_multi_msgplayer[3] = HUSTR_KEYRED;
 
-    M_BindIntVariable("mouse_sensitivity",      &mouseSensitivity);
-    M_BindIntVariable("sfx_volume",             &sfxVolume);
-    M_BindIntVariable("music_volume",           &musicVolume);
-    M_BindIntVariable("show_messages",          &showMessages);
-    M_BindIntVariable("screenblocks",           &screenblocks);
-    M_BindIntVariable("detaillevel",            &detailLevel);
-    M_BindIntVariable("snd_channels",           &snd_channels);
-    M_BindIntVariable("vanilla_savegame_limit", &vanilla_savegame_limit);
-    M_BindIntVariable("vanilla_demo_limit",     &vanilla_demo_limit);
-    M_BindIntVariable("show_endoom",            &show_endoom);
-    M_BindIntVariable("show_diskicon",          &show_diskicon);
-
     // Multiplayer chat macros
 
     for (i=0; i<10; ++i)
     {
-        char buf[12];
-
         chat_macros[i] = M_StringDuplicate(chat_macro_defaults[i]);
-        M_snprintf(buf, sizeof(buf), "chatmacro%i", i);
-        M_BindStringVariable(buf, &chat_macros[i]);
     }
 }
 
@@ -1237,12 +1209,7 @@ void D_DoomMain (void)
 
     // Load configuration files before initialising other subsystems.
     DEH_printf("M_LoadDefaults: Load system defaults.\n");
-    M_SetConfigFilenames("default.cfg", PROGRAM_PREFIX "doom.cfg");
     D_BindVariables();
-    M_LoadDefaults();
-
-    // Save configuration at exit.
-    I_AtExit(M_SaveDefaults, false);
 
     modifiedgame = false;
 

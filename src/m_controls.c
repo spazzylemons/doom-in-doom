@@ -19,7 +19,6 @@
 #include "doomtype.h"
 #include "doomkeys.h"
 
-#include "m_config.h"
 #include "m_misc.h"
 
 int key_message_refresh = KEY_ENTER;
@@ -43,75 +42,3 @@ int key_menu_back      = KEY_BACKSPACE;
 int key_menu_forward   = KEY_ENTER;
 int key_menu_confirm   = 'y';
 int key_menu_abort     = 'n';
- 
-// 
-// Bind all of the common controls used by Doom and all other games.
-//
-
-void M_BindBaseControls(void)
-{
-    M_BindIntVariable("key_pause",           &key_pause);
-    M_BindIntVariable("key_message_refresh", &key_message_refresh);
-}
-
-void M_BindHereticControls(void)
-{
-}
-
-void M_BindHexenControls(void)
-{
-}
-
-void M_BindStrifeControls(void)
-{
-    // These are shared with all games, but have different defaults:
-    key_message_refresh = '/';
-}
-
-void M_BindWeaponControls(void)
-{
-}
-
-void M_BindMapControls(void)
-{
-}
-
-void M_BindMenuControls(void)
-{
-    M_BindIntVariable("key_menu_activate",  &key_menu_activate);
-    M_BindIntVariable("key_menu_up",        &key_menu_up);
-    M_BindIntVariable("key_menu_down",      &key_menu_down);
-    M_BindIntVariable("key_menu_left",      &key_menu_left);
-    M_BindIntVariable("key_menu_right",     &key_menu_right);
-    M_BindIntVariable("key_menu_back",      &key_menu_back);
-    M_BindIntVariable("key_menu_forward",   &key_menu_forward);
-    M_BindIntVariable("key_menu_confirm",   &key_menu_confirm);
-    M_BindIntVariable("key_menu_abort",     &key_menu_abort);
-    M_BindIntVariable("key_demo_quit",      &key_demo_quit);
-    M_BindIntVariable("key_spy",            &key_spy);
-}
-
-void M_BindChatControls(unsigned int num_players)
-{
-    char name[32];  // haleyjd: 20 not large enough - Thank you, come again!
-    unsigned int i; // haleyjd: signedness conflict
-
-    M_BindIntVariable("key_multi_msg",     &key_multi_msg);
-
-    for (i=0; i<num_players; ++i)
-    {
-        M_snprintf(name, sizeof(name), "key_multi_msgplayer%i", i + 1);
-        M_BindIntVariable(name, &key_multi_msgplayer[i]);
-    }
-}
-
-//
-// Apply custom patches to the default values depending on the
-// platform we are running on.
-//
-
-void M_ApplyPlatformDefaults(void)
-{
-    // no-op. Add your platform-specific patches here.
-}
-

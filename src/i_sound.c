@@ -24,7 +24,6 @@
 #include "i_sound.h"
 #include "i_video.h"
 #include "m_argv.h"
-#include "m_config.h"
 #include "sounds.h"
 
 // Whether to vary the pitch of sound effects
@@ -79,9 +78,3 @@ void I_ResumeSong(void)
 void I_StopSong(void)
 {
 }
-
-void I_BindSoundVariables(void)
-{
-    M_BindIntVariable("snd_pitchshift",          &snd_pitchshift);
-}
-

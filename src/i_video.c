@@ -28,7 +28,6 @@
 #include "i_timer.h"
 #include "i_video.h"
 #include "m_argv.h"
-#include "m_config.h"
 #include "m_misc.h"
 #include "tables.h"
 #include "v_diskicon.h"
@@ -47,11 +46,6 @@ static boolean initialized = false;
 // disable mouse?
 
 int usemouse = 1;
-
-// Grab the mouse? (int type for config code). nograbmouse_override allows
-// this to be temporarily disabled via the command line.
-
-static int grabmouse = true;
 
 // The screen buffer; this is modified to draw things to the screen
 
@@ -183,15 +177,6 @@ void I_InitGraphics(void)
     memset(I_VideoBuffer, 0, SCREENWIDTH * SCREENHEIGHT * sizeof(*I_VideoBuffer));
 
     initialized = true;
-}
-
-// Bind all variables controlling video options into the configuration
-// file system.
-void I_BindVideoVariables(void)
-{
-    M_BindIntVariable("use_mouse",                 &usemouse);
-    M_BindIntVariable("grabmouse",                 &grabmouse);
-    M_BindIntVariable("usegamma",                  &usegamma);
 }
 
 void I_EndFrame(void)

@@ -28,7 +28,6 @@
 #include "deh_str.h"
 #include "doomtype.h"
 #include "m_argv.h"
-#include "m_config.h"
 #include "m_misc.h"
 #include "i_sound.h"
 #include "i_timer.h"

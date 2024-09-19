@@ -39,16 +39,5 @@ extern int key_menu_abort;
 
 extern int dclick_use;
 
-void M_BindBaseControls(void);
-void M_BindHereticControls(void);
-void M_BindHexenControls(void);
-void M_BindStrifeControls(void);
-void M_BindWeaponControls(void);
-void M_BindMapControls(void);
-void M_BindMenuControls(void);
-void M_BindChatControls(unsigned int num_players);
-
-void M_ApplyPlatformDefaults(void);
-
 #endif /* #ifndef __M_CONTROLS_H__ */
 

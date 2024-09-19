@@ -81,6 +81,4 @@ void I_StopSong(void);
 
 extern int snd_pitchshift;
 
-void I_BindSoundVariables(void);
-
 #endif
