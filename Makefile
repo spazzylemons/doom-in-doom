@@ -97,7 +97,6 @@ OBJS := \
     $(O)/st_lib.bc \
     $(O)/st_stuff.bc \
     $(O)/tables.bc \
-    $(O)/v_diskicon.bc \
     $(O)/v_video.bc \
     $(O)/wi_stuff.bc \
     $(O)/w_wad.bc \

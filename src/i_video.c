@@ -30,7 +30,6 @@
 #include "m_argv.h"
 #include "m_misc.h"
 #include "tables.h"
-#include "v_diskicon.h"
 #include "v_video.h"
 #include "w_wad.h"
 #include "z_zone.h"
@@ -138,13 +137,7 @@ void I_FinishUpdate (void)
 	    I_VideoBuffer[ (SCREENHEIGHT-1)*SCREENWIDTH + i] = 0x0;
     }
 
-    // Draw disk icon before blit, if necessary.
-    V_DrawDiskIcon();
-
     I_EndFrame();
-
-    // Restore background and undo the disk indicator, if it was drawn.
-    V_RestoreDiskBackground();
 }
 
 

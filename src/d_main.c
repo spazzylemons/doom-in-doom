@@ -36,7 +36,6 @@
 #include "z_zone.h"
 #include "w_wad.h"
 #include "s_sound.h"
-#include "v_diskicon.h"
 #include "v_video.h"
 
 #include "f_finale.h"
@@ -259,27 +258,6 @@ boolean D_Display (void)
     return wipe;
 }
 
-static void EnableLoadingDisk(void)
-{
-    const char *disk_lump_name;
-
-    if (show_diskicon)
-    {
-        if (M_CheckParm("-cdrom") > 0)
-        {
-            disk_lump_name = DEH_String("STCDROM");
-        }
-        else
-        {
-            disk_lump_name = DEH_String("STDISK");
-        }
-
-        V_EnableLoadingDisk(disk_lump_name,
-                            SCREENWIDTH - LOADING_DISK_W,
-                            SCREENHEIGHT - LOADING_DISK_H);
-    }
-}
-
 //
 // Add configuration file variable bindings.
 //
@@ -393,7 +371,6 @@ void D_DoomLoop (void)
     main_loop_started = true;
 
     I_InitGraphics();
-    EnableLoadingDisk();
 
     TryRunTics();
 
