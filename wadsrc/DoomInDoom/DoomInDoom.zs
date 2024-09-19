@@ -15,6 +15,21 @@ class DoomInDoom : Actor {
 
     void Load() {
         LoadFuncPtrs();
+
+        let rom = Wads.ReadLump(Wads.CheckNumForFullName("DoomInDoom/generated/data.bin"));
+        uint i;
+
+        // Zero out memory.
+        for (i = 0; i < MEMORY_SIZE; i++)
+            Store8(i, 0);
+
+        // Load data segment into memory.
+        for (i = 0; i < rom.Length(); i++)
+            Store8(i + MIN_VALID_MEMORY, rom.ByteAt(i));
+
+        // Start it up!
+        stack = MEMORY_SIZE;
+        func_D_DoomMain();
     }
 
     uint Load1(uint addr) {
@@ -90,34 +105,21 @@ class DoomInDoom : Actor {
         }
     }
 
-    uint func_I_GetTime() {
-        return ticCount;
-    }
-
-    void Reset() {
-        let rom = Wads.ReadLump(Wads.CheckNumForFullName("DoomInDoom/data.bin"));
-        uint i;
-
-        // Zero out memory.
-        for (i = 0; i < MEMORY_SIZE; i++)
-            Store8(i, 0);
-
-        // Load data segment into memory.
-        for (i = 0; i < rom.Length(); i++)
-            Store8(i + MIN_VALID_MEMORY, rom.ByteAt(i));
-
-        // Start it up!
-        stack = MEMORY_SIZE;
-        func_D_DoomMain();
-    }
-
     void AddEvent(event_t e) {
         events.Push(e);
+    }
+
+    uint func_I_GetTime() {
+        return ticCount;
     }
 
     void Run() {
         func_D_RunFrame();
         ticCount++;
+    }
+
+    void Quit() {
+        Level.ExitLevel(0, false);
     }
 
     default {
@@ -130,16 +132,15 @@ class DoomInDoom : Actor {
     states {
         Spawn:
             TNT1 A 0;
+
             // Load the function pointers.
             TNT1 A 0 Load;
-            TNT1 A 0 Reset;
             TNT1 A 1 Run;
             wait;
         Death:
+            // 3 second pause like the original.
             TNT1 A 105;
-            TNT1 A -1 {
-                Level.ExitLevel(0, false);
-            }
+            TNT1 A -1 Quit;
             stop;
 	}
 }

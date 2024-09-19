@@ -5,5 +5,4 @@ build/
 *.wad.bak
 *.dsg
 
-wadsrc/DoomInDoom/code.zs
-wadsrc/DoomInDoom/data.bin
+wadsrc/DoomInDoom/generated

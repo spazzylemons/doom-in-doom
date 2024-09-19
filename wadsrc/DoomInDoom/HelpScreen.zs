@@ -10,16 +10,19 @@ class DoomInDoomHelpScreen : EventHandler {
         textFont = HUDFont.Create('SMALLFONT');
     }
 
-    private ui void DrawHelpText() {
-        // Find what key is mapped to spynext.
+    private static clearscope String GetSpyBinds() {
         Array<int> spyBinds;
         bindings.GetAllKeysForCommand(spyBinds, "spynext");
-        String spyMapping;
         if (spyBinds.Size() == 0) {
-            spyMapping = "currently unbound";
+            return "currently unbound";
         } else {
-            spyMapping = bindings.NameAllKeys(spyBinds);
+            return bindings.NameAllKeys(spyBinds);
         }
+    }
+
+    private ui void DrawHelpText() {
+        let spyName = Stringtable.Localize("$CNTRLMNU_COOPSPY");
+        let spyBinds = GetSpyBinds();
 
         statusBar.Fill(
             Color(200, 0, 0, 0),
@@ -40,7 +43,7 @@ class DoomInDoomHelpScreen : EventHandler {
         statusBar.DrawString(
             textFont,
             "Your GZDoom keybindings will be mapped to the matching controls. Since Escape is bound to GZDoom's pause menu, Delete is used instead to open/close the menu in the nested Doom instance.\n\n" ..
-            "If you want to look around the map, press the 'Coop spy' key (" .. spyMapping .. ") to switch to controlling GZDoom. Press it again to switch back.\n\n" ..
+            "If you want to look around the map, press the '" .. spyName .. "' key (" .. spyBinds .. ") to switch to controlling GZDoom. Press it again to switch back.\n\n" ..
             "Press any key to dismiss this message.",
             (0, -48),
             BaseStatusBar.DI_SCREEN_CENTER,
