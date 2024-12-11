@@ -16,7 +16,7 @@ CFLAGS := --target=i386-unknown \
 
 O := build
 
-TARGETDIR := wadsrc/DoomInDoom
+TARGETDIR := wadsrc/DoomInDoom/generated
 
 TARGET := $(TARGETDIR)/code.zs
 
