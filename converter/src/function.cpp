@@ -26,6 +26,7 @@ struct FuncCompileCtx {
     uint32_t globalCounter = 0U;
     uint32_t localCounter = 0U;
     uint32_t phiCounter = 0U;
+    bool usesStack = false;
 
     std::set<std::string> varNames;
 
@@ -265,7 +266,26 @@ void FuncCompileCtx::compile(const llvm::Function& func) {
         content << "uint label,lastLabel;\n";
     }
 
-    content << "uint s=stack;\n";
+    usesStack = std::any_of(func.begin(), func.end(), [](const llvm::BasicBlock& block) {
+        return std::any_of(block.begin(), block.end(), [](const llvm::Instruction& ins) {
+            if (ins.getOpcode() == llvm::Instruction::Alloca)
+                return true;
+
+            if (ins.getOpcode() == llvm::Instruction::Call) {
+                auto& callIns = llvm::cast<llvm::CallInst>(ins);
+
+                if (auto f = callIns.getCalledFunction()) {
+                    if (f->getName().equals("llvm.va_start"))
+                        return true;
+                }
+            }
+
+            return false;
+        });
+    });
+
+    if (usesStack) content << "uint s=stack;\n";
+
     compileBlock(func.getEntryBlock());
 
     if (hasOtherBlocks) {
@@ -337,7 +357,7 @@ void FuncCompileCtx::compileTerminator(const llvm::Instruction& baseIns) {
             const auto& ins = llvm::cast<llvm::ReturnInst>(baseIns);
             auto value = ins.getReturnValue();
 
-            content << "stack=s;\n";
+            if (usesStack) content << "stack=s;\n";
             content << "return";
             if (value != nullptr) {
                 content << " " << getValue(value);
